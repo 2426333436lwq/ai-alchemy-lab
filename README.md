@@ -5,7 +5,12 @@
 一个面向初学者的 **AI / 大模型中文教学博客**。不是随笔集，内容按难度分层编排成体系：从「大模型其实在猜下一个字」这类原理直觉，一路讲到模型选型、微调、推理优化和真实踩坑记录。
 
 - **线上站点**：https://ai-alchemy-lab.app.workbuddy.host/
+- **代码仓库**：https://github.com/2426333436lwq/ai-alchemy-lab
 - **当前规模**：31 篇已发布文章 · 约 3700 行 JS · 1700 行 CSS · 7 张数据表
+
+```bash
+git clone git@github.com:2426333436lwq/ai-alchemy-lab.git
+```
 
 ## 技术栈
 
