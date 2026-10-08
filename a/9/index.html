@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>微调入门：通识教育之后，再上岗前培训 · AI 炼丹房</title>
+<meta name="description" content="微调不是万能药，它只解决一类问题：让模型「习惯」某种行为。搞清什么时候该微调、什么时候该用 Prompt 或 RAG，能帮你省下几万块和两周时间。附一份训练数据长什么样的实例。">
+<meta name="keywords" content="炼丹笔记,微调,教程">
+<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/9/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="微调入门：通识教育之后，再上岗前培训 · AI 炼丹房">
+<meta property="og:description" content="微调不是万能药，它只解决一类问题：让模型「习惯」某种行为。搞清什么时候该微调、什么时候该用 Prompt 或 RAG，能帮你省下几万块和两周时间。附一份训练数据长什么样的实例。">
+<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/9/">
+<meta property="og:site_name" content="AI 炼丹房">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="微调入门：通识教育之后，再上岗前培训 · AI 炼丹房">
+<meta name="twitter:description" content="微调不是万能药，它只解决一类问题：让模型「习惯」某种行为。搞清什么时候该微调、什么时候该用 Prompt 或 RAG，能帮你省下几万块和两周时间。附一份训练数据长什么样的实例。">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"微调入门：通识教育之后，再上岗前培训 · AI 炼丹房","description":"微调不是万能药，它只解决一类问题：让模型「习惯」某种行为。搞清什么时候该微调、什么时候该用 Prompt 或 RAG，能帮你省下几万块和两周时间。附一份训练数据长什么样的实例。","datePublished":"2026-09-27T16:21:00+08:00","dateModified":"2026-09-27T16:21:00+08:00","keywords":"炼丹笔记,微调,教程","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/9/"}}</script>
+<style>
+body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
+</head>
+<body>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/9">进入完整站点</a></div></div>
+<div class="snap-wrap"><h1 class="snap-title">微调入门：通识教育之后，再上岗前培训</h1><div class="snap-meta"><span>2026 年 9 月 27 日</span><span>约 5 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E7%82%BC%E4%B8%B9%E7%AC%94%E8%AE%B0">炼丹笔记</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%BE%AE%E8%B0%83">微调</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E6%95%99%E7%A8%8B">教程</a></span></div><div class="article-body"><p>很多人一上来就说：「我要微调一个自己的模型。」</p>
+<p>先别急。<strong>微调是最贵、最慢、最难回头的手段</strong>，而你可能根本不需要它。</p>
+<h2>一个比喻：通识教育 vs 岗前培训</h2>
+<p>把一个开源基座模型想象成一个<strong>刚毕业的大学生</strong>：</p>
+<ul>
+<li>他读过海量书籍，什么都懂一点（通识教育 = 预训练）；</li>
+<li>但他不知道你公司的规矩、术语、文件格式（不知道你的业务）；</li>
+<li>你要让他上岗，有两条路：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>路</th>
+<th>怎么做</th>
+<th>类比</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>给他一本手册</strong>，让他照着答</td>
+<td>RAG / Prompt</td>
+<td>给他工具书，边看边干</td>
+</tr>
+<tr>
+<td><strong>送他去岗前培训</strong>，练成肌肉记忆</td>
+<td><strong>微调</strong></td>
+<td>反复练，练成本能</td>
+</tr>
+</tbody></table>
+<p><strong>微调就是岗前培训</strong>：通过喂给它一批「标准答案」并反复训练，把某种行为<strong>刻进它的参数里</strong>，变成不用你提醒就会做的本能。</p>
+<h2>先做这道判断题</h2>
+<p>在动手前，请先确认你要解决的到底是哪种问题：</p>
+<h3>情况 A：模型不知道某件事 → <strong>用 RAG，别微调</strong></h3>
+<pre><code class="language-text hljs">症状：问「我们公司年假几天」，它编了一个通用答案
+病因：它没见过你的制度文档 → 缺知识
+药方：RAG（第二层第 2 篇）
+</code></pre>
+<p>微调<strong>不擅长</strong>注入知识。你喂它几份文档微调，它可能记住了这几份，但问到文档外的照样编，而且你<strong>没法随时更新</strong>——改一次制度就得重新训一次。</p>
+<h3>情况 B：模型不会按你要的方式说话 → <strong>微调</strong></h3>
+<pre><code class="language-text hljs">症状：要求输出严格 JSON，它十次有三次给你加段废话
+病因：它不知道你的格式规矩 → 缺行为习惯
+药方：微调 ✅
+</code></pre>
+<p>这类问题 RAG 解决不了——你在 Prompt 里贴一百个 JSON 示例，它也可能在长对话后忘了规矩。微调能把「永远输出这种格式」变成它的本能。</p>
+<h3>情况 C：只是这一次没说清楚 → <strong>改 Prompt</strong></h3>
+<pre><code class="language-text hljs">症状：回答太啰嗦
+病因：你没提要求
+药方：加一句「用三句话以内回答」
+</code></pre>
+<p>别用微调去解决一个 Prompt 能解决的事。</p>
+<h2>决策表</h2>
+<table>
+<thead>
+<tr>
+<th>你的需求</th>
+<th>推荐方案</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>回答私有文档里的内容</td>
+<td><strong>RAG</strong></td>
+<td>知识随时更新，微调做不到</td>
+</tr>
+<tr>
+<td>固定输出格式（JSON / 特定模板）</td>
+<td><strong>微调</strong></td>
+<td>练成本能，比 Prompt 稳</td>
+</tr>
+<tr>
+<td>学会行业黑话、特定术语体系</td>
+<td><strong>微调</strong></td>
+<td>词汇和用法要刻进参数</td>
+</tr>
+<tr>
+<td>模仿特定语气风格（客服话术）</td>
+<td><strong>微调</strong></td>
+<td>风格是行为习惯</td>
+</tr>
+<tr>
+<td>小模型在窄任务上追大模型</td>
+<td><strong>微调</strong></td>
+<td>专精一个任务可以很强</td>
+</tr>
+<tr>
+<td>只是这次答得不好</td>
+<td><strong>改 Prompt</strong></td>
+<td>最便宜</td>
+</tr>
+<tr>
+<td>需要实时/最新信息</td>
+<td><strong>RAG 或工具调用</strong></td>
+<td>微调的知识会过期</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>口诀</strong>：<strong>缺知识 → RAG；缺行为 → 微调；缺交代 → Prompt。</strong></p>
+</blockquote>
+<h2>微调到底在做什么</h2>
+<p>说穿了很简单：</p>
+<pre><code class="language-text hljs">你准备一堆「问题 → 标准答案」的配对数据
+            ↓
+让模型反复看这些数据，每次都问：
+「照你现在的参数，你会怎么答？」
+            ↓
+把它答的和标准答案对比，算出差距
+            ↓
+按差距去微调它的参数（让下次更像标准答案）
+            ↓
+重复成千上万次
+</code></pre>
+<p>这就是<strong>监督微调（SFT, Supervised Fine-Tuning）</strong>。名字唬人，原理就是「给它看标准答案，让它照着学」。</p>
+<h2>训练数据长什么样</h2>
+<p>一般是这样的问答对（JSONL 格式，一行一条）：</p>
+<pre><code class="language-json hljs">{&quot;messages&quot;: [
+  {&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: &quot;你是客服助手，只输出 JSON，不要任何其他文字。&quot;},
+  {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;订单 A1024 什么时候发货？&quot;},
+  {&quot;role&quot;: &quot;assistant&quot;, &quot;content&quot;: &quot;{\&quot;intent\&quot;:\&quot;query_shipping\&quot;,\&quot;order_id\&quot;:\&quot;A1024\&quot;,\&quot;reply\&quot;:\&quot;正在为您查询订单 A1024 的发货状态。\&quot;}&quot;}
+]}
+{&quot;messages&quot;: [
+  {&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: &quot;你是客服助手，只输出 JSON，不要任何其他文字。&quot;},
+  {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;我要退款&quot;},
+  {&quot;role&quot;: &quot;assistant&quot;, &quot;content&quot;: &quot;{\&quot;intent\&quot;:\&quot;request_refund\&quot;,\&quot;order_id\&quot;:null,\&quot;reply\&quot;:\&quot;请您提供需要退款的订单号。\&quot;}&quot;}
+]}
+</code></pre>
+<p>注意几个要点：</p>
+<ul>
+<li><strong>每条都要带上相同的 system 提示</strong>，让它把「身份」和「任务」绑定在一起学；</li>
+<li><strong>assistant 的回答就是你的「标准答案」</strong>，模型会照着这个样子学；</li>
+<li><strong>几百到几千条</strong>就能见效（取决于任务复杂度），不是越多越好，<strong>质量远比数量重要</strong>。</li>
+</ul>
+<h2>数据质量：这一炉的药材</h2>
+<p>老话重提：<strong>数据是药材，药材不纯，丹药必废。</strong></p>
+<p>微调会<strong>放大</strong>数据里的一切问题：</p>
+<table>
+<thead>
+<tr>
+<th>数据里的问题</th>
+<th>微调后</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>标答格式不统一（有的带引号有的不带）</td>
+<td>模型输出格式随机</td>
+</tr>
+<tr>
+<td>有几条标答是错的</td>
+<td>模型学会了那个错误，还很自信</td>
+</tr>
+<tr>
+<td>全是简单样本</td>
+<td>遇到复杂情况就崩</td>
+</tr>
+<tr>
+<td>有偏见/不当内容</td>
+<td>直接学会，而且更难消除</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>⚠️ 一条经验：<strong>先花 80% 的时间检查和清洗数据，再开始训练。</strong> 在训练到一半发现数据有问题，是最贵的返工。</p>
+</blockquote>
+<h2>微调的基本流程</h2>
+<pre><code class="language-text hljs">1. 明确目标    「我要它学会什么？怎么算成功？」
+                ↓ 先定好评测标准，否则你不知道有没有练成
+2. 准备数据     几百～几千条高质量问答对 + 留一部分做测试集
+                ↓
+3. 选基座       7B 级开源模型起步（Qwen、Llama 系列等）
+                ↓
+4. 训练         LoRA 起步（下一讲），别一上来就全参
+                ↓
+5. 评测         用第 1 步定好的标准，在测试集上打分
+                ↓
+6. 迭代         不行就回去改数据，而不是一味加训练轮数
+</code></pre>
+<p><strong>最常见的错误是跳过第 1 步和第 5 步</strong>——训完了不知道有没有变好，只能凭感觉。</p>
+<h2>炼丹小结</h2>
+<ol>
+<li>微调 = <strong>岗前培训</strong>，把某种行为刻进参数，变成不需要提醒的本能；</li>
+<li>决策口诀：<strong>缺知识 → RAG；缺行为 → 微调；缺交代 → Prompt</strong>；</li>
+<li>SFT 就是<strong>给它看标准答案让它照着学</strong>；</li>
+<li>数据<strong>质量远重于数量</strong>，垃圾数据会被微调放大；</li>
+<li>训练前先定评测标准，训练后必须打分，别凭感觉。</li>
+</ol>
+<p>那么问题来了：<strong>微调一个 7B 模型，需要多大的卡？</strong> 全参数训练要几十 GB 显存，普通人根本玩不起。</p>
+<p>下一讲 LoRA——让消费级显卡也能炼丹的核心科技。</p>
+<p>丹成不必在我，火候自有记录。</p>
+</div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/8/">LoRA 是什么：不动丹体，只贴一张便利贴</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/7/">后训练的六道火候：大模型是怎么「刷题」变强的</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/4/">学习路线图：从「AI 是什么」到「自己炼一炉丹」</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/9">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</body>
+</html>

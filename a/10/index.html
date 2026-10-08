@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上下文工程：把注意力当预算来花 · AI 炼丹房</title>
+<meta name="description" content="2024 年我们写 Prompt，2026 年我们写「产出下一个上下文的程序」。写、选、压、隔四招，一份预算分配表，以及为什么「把资料全塞进去」是最昂贵的偷懒。第二层的进阶心法。">
+<meta name="keywords" content="药方研究,上下文工程,Agent,Prompt工程">
+<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/10/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="上下文工程：把注意力当预算来花 · AI 炼丹房">
+<meta property="og:description" content="2024 年我们写 Prompt，2026 年我们写「产出下一个上下文的程序」。写、选、压、隔四招，一份预算分配表，以及为什么「把资料全塞进去」是最昂贵的偷懒。第二层的进阶心法。">
+<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/10/">
+<meta property="og:site_name" content="AI 炼丹房">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="上下文工程：把注意力当预算来花 · AI 炼丹房">
+<meta name="twitter:description" content="2024 年我们写 Prompt，2026 年我们写「产出下一个上下文的程序」。写、选、压、隔四招，一份预算分配表，以及为什么「把资料全塞进去」是最昂贵的偷懒。第二层的进阶心法。">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"上下文工程：把注意力当预算来花 · AI 炼丹房","description":"2024 年我们写 Prompt，2026 年我们写「产出下一个上下文的程序」。写、选、压、隔四招，一份预算分配表，以及为什么「把资料全塞进去」是最昂贵的偷懒。第二层的进阶心法。","datePublished":"2026-09-27T16:22:00+08:00","dateModified":"2026-09-27T16:22:00+08:00","keywords":"药方研究,上下文工程,Agent,Prompt工程","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/10/"}}</script>
+<style>
+body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
+</head>
+<body>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/10">进入完整站点</a></div></div>
+<div class="snap-wrap"><h1 class="snap-title">上下文工程：把注意力当预算来花</h1><div class="snap-meta"><span>2026 年 9 月 27 日</span><span>约 7 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E8%8D%AF%E6%96%B9%E7%A0%94%E7%A9%B6">药方研究</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E4%B8%8A%E4%B8%8B%E6%96%87%E5%B7%A5%E7%A8%8B">上下文工程</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/Agent">Agent</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/Prompt%E5%B7%A5%E7%A8%8B">Prompt工程</a></span></div><div class="article-body"><p>上一篇我们讲了上下文窗口是<strong>办公桌</strong>——面积有限，摊不开的就看不见。</p>
+<p>这一篇是进阶版：<strong>既然桌子这么贵，怎么把它当预算来精打细算？</strong></p>
+<h2>一次代价昂贵的偷懒</h2>
+<p>先看一个真实场景。你做了一个客服 Agent，把产品手册全部塞进了系统提示：</p>
+<pre><code class="language-text hljs">系统提示 = 角色设定 + 完整产品手册（2 万字）+ 历史对话
+</code></pre>
+<p>跑了几天你发现两个问题：</p>
+<ol>
+<li><strong>每轮对话都很贵</strong>——那 2 万字手册，<strong>每一轮都要重新付费</strong>；</li>
+<li><strong>聊到十几轮，它开始答非所问</strong>——手册把桌子占满了，真正的对话挤在角落里。</li>
+</ol>
+<p>第 1 个问题是钱的问题，第 2 个是准确率的问题。<strong>而这两个问题的根源是同一个：你把桌子当成了仓库。</strong></p>
+<h2>核心观念：上下文是预算，不是袋子</h2>
+<p>有个说法很贴切：</p>
+<blockquote>
+<p><strong>2024 年我们写 Prompt，2026 年我们写「产出下一个上下文的程序」。</strong></p>
+</blockquote>
+<p>模型是解释器，<strong>上下文才是程序</strong>。每一格位置，你都得问一句：<strong>它值这个 token 吗？</strong></p>
+<p>这门手艺现在叫<strong>上下文工程（Context Engineering）</strong>。它接过了「Prompt 工程」的班，因为大家终于意识到：<strong>Agent 变笨，八成不是模型不行，是喂给它的那扇窗口烂了。</strong></p>
+<h2>四招：写、选、压、隔</h2>
+<p>面对一个稀缺资源，你能做的动作其实就四个：</p>
+<table>
+<thead>
+<tr>
+<th>招式</th>
+<th>干什么</th>
+<th>大白话</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>写 Write</strong></td>
+<td>把状态写到窗口<strong>外面</strong>的文件里</td>
+<td>桌上放不下的，先放进抽屉</td>
+</tr>
+<tr>
+<td><strong>选 Select</strong></td>
+<td>只取当前这一步真正需要的</td>
+<td>用什么拿什么，别一次全摊开</td>
+</tr>
+<tr>
+<td><strong>压 Compress</strong></td>
+<td>把旧对话蒸馏成一段摘要</td>
+<td>把 50 页会议记录换成 1 页纪要</td>
+</tr>
+<tr>
+<td><strong>隔 Isolate</strong></td>
+<td>给子任务开一扇<strong>独立的小窗</strong></td>
+<td>分头干活，各看各的桌子</td>
+</tr>
+</tbody></table>
+<h3>招式一 · 写：把状态挪出窗口</h3>
+<p>最高性价比的一招。Agent 不该「扛着」全部历史跑，它该把东西<strong>放下来</strong>。</p>
+<pre><code class="language-text hljs">❌ 把项目进度、已做的决策、待办事项全部留在对话里
+✅ 每完成一步就写进 NOTES.md，下一步需要时再读回来
+</code></pre>
+<p>好处是：<strong>压缩发生时，状态不会跟着丢</strong>——因为它从来就不住在窗口里。</p>
+<h3>招式二 · 选：按需取，别预加载</h3>
+<p>回到开头那个例子。产品手册 2 万字，但<strong>用户这一轮只是问「怎么退货」</strong>。</p>
+<pre><code class="language-text hljs">❌ 提示级：每轮都把整个手册塞进去      → 每轮 20,000 token
+✅ 工具级：给它一个 search_manual 工具  → 每轮 500 token，用到时才 +1,200
+</code></pre>
+<p><strong>大多数轮次根本不需要检索</strong>。为什么要让每一轮都为它付税？</p>
+<blockquote>
+<p>这就是 RAG 那篇讲的思路，只是从「查文档」推广到了「查任何东西」：文件、历史记录、工具结果，都按需取用。</p>
+</blockquote>
+<h3>招式三 · 压：压缩要有判断力</h3>
+<p>聊到 50 轮，桌子放不下了，你得压缩。但<strong>压缩最怕一视同仁</strong>。</p>
+<pre><code class="language-python hljs">def compact_history(messages, token_threshold=50_000):
+    if count_tokens(messages) &lt; token_threshold:
+        return messages
+    recent = messages[-6:]          # 最近 3 轮保留原文
+    older = messages[:-6]
+    summary = summarize(older, focus=[
+        &quot;decisions made&quot;,            # 做了什么决定 ← 高信号
+        &quot;files modified&quot;,            # 改了哪些文件
+        &quot;open questions&quot;,            # 还没解决什么
+        &quot;tools that failed and why&quot;  # 失败过什么、为什么 ← 高信号
+    ])
+    return [{&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: f&quot;PRIOR WORK SUMMARY:\n{summary}&quot;}, *recent]
+</code></pre>
+<p>注意 <code>focus</code> 里那四项。<strong>决策和错误是信号，冗长的工具输出是噪声。</strong></p>
+<p>一视同仁地压缩，等于把丹药和药渣一起倒了——这就是为什么很多 Agent 压缩完会「重复做已经做完的事」。</p>
+<h3>招式四 · 隔：子 agent 开小窗</h3>
+<p>一个只知道单个文件的子 agent，比一个扛着整个代码库的主 agent 推理得更好——部分原因就是<strong>它的窗口没烂</strong>。</p>
+<p>但<strong>这是最贵的一招</strong>（要编排、要汇总、要处理冲突），先别急着用。</p>
+<h2>一份预算分配表</h2>
+<p>既然是预算，就该有配额。这是长程 Agent 常用的一套分配：</p>
+<table>
+<thead>
+<tr>
+<th>槽位</th>
+<th>放什么</th>
+<th>预算</th>
+<th>位置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>系统与人设</td>
+<td>角色、规则、输出契约</td>
+<td>~5%</td>
+<td>最前（稳定）</td>
+</tr>
+<tr>
+<td>决策相关上下文</td>
+<td>这一步真正需要的少数事实</td>
+<td>~25%</td>
+<td><strong>紧跟系统提示之后</strong></td>
+</tr>
+<tr>
+<td>工作集</td>
+<td>当前正在操作的文件</td>
+<td>~30%</td>
+<td>中间</td>
+</tr>
+<tr>
+<td>近期历史</td>
+<td>最近几轮（只要与决策相关的）</td>
+<td>~20%</td>
+<td>靠后</td>
+</tr>
+<tr>
+<td><strong>留白</strong></td>
+<td>留给模型自己思考和输出</td>
+<td>~20%</td>
+<td><strong>预留，绝不填满</strong></td>
+</tr>
+</tbody></table>
+<p>由这张表推出<strong>两条排序规则</strong>：</p>
+<p><strong>规则一：最关键的信息紧跟系统提示，别埋在中间。</strong>
+因为模型对开头和结尾利用得最好，中间最容易被忽略（上一篇讲过的 U 型曲线）。</p>
+<p><strong>规则二：稳定前缀要逐字节保持一致。</strong>
+系统提示这类内容<strong>一个字符都别改</strong>——改一个字，缓存就整个失效，价格差一个数量级。</p>
+<blockquote>
+<p>⚠️ 所以<strong>别在系统提示里插时间戳</strong>。很多人随手加一句「今天是 2026-09-27」，结果每轮缓存全部失效，白花一大笔钱。要传日期，放在<strong>用户消息</strong>里。</p>
+</blockquote>
+<h2>四种失效模式</h2>
+<p>窗口腐烂的方式不止一种，这四类值得记住：</p>
+<table>
+<thead>
+<tr>
+<th>失效</th>
+<th>表现</th>
+<th>典型成因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>中毒</strong></td>
+<td>一个错误进了上下文，后面被反复当事实引用</td>
+<td>工具返回的错误结果没清洗</td>
+</tr>
+<tr>
+<td><strong>分心</strong></td>
+<td>历史太长，模型开始重复过去而不推进任务</td>
+<td>历史占比过高，留白不足</td>
+</tr>
+<tr>
+<td><strong>混淆</strong></td>
+<td>工具太多太杂，模型用错了</td>
+<td>工具集过大、描述含糊</td>
+</tr>
+<tr>
+<td><strong>冲突</strong></td>
+<td>上下文里有互相矛盾的信息，模型左右为难</td>
+<td>事实更新了但旧版本没删</td>
+</tr>
+</tbody></table>
+<h2>最常见的错误：没埋点就拆多智能体</h2>
+<p>看到这里，很多人会想：「那我把 Agent 拆成多个子 agent 不就行了？」</p>
+<p><strong>这是最常见的错误动作。</strong> 隔离确实有收益，但它最贵，而且会<strong>掩盖真正的问题</strong>——真正的瓶颈通常是没压缩、没按需检索，那些便宜得多。</p>
+<p>正确顺序：</p>
+<pre><code class="language-text hljs">1. 先埋点   每轮进了什么？每个块多大？缓存命中率多少？
+            ↓
+2. 再压缩 + 按需选择   ← 便宜且见效快
+            ↓
+3. 最后才隔离（多智能体）
+</code></pre>
+<blockquote>
+<p>一句话：<strong>先给上下文装上仪表盘，再动架构。</strong> 没测体温就开刀，是要出事的。</p>
+</blockquote>
+<h2>炼丹小结</h2>
+<ol>
+<li>上下文是<strong>预算</strong>不是袋子；填满 = 变笨 + 变贵；</li>
+<li>四招：<strong>写</strong>（外置状态）、<strong>选</strong>（按需取用）、<strong>压</strong>（保留决策与错误）、<strong>隔</strong>（子 agent 开窗）；</li>
+<li>排序有讲究：关键信息紧跟系统提示；<strong>稳定前缀逐字节不变</strong>以命中缓存；</li>
+<li><strong>留 20% 留白</strong>给模型思考，这 20% 绝不能填；</li>
+<li>动手顺序：<strong>埋点 → 压缩/选择 → 隔离</strong>。</li>
+</ol>
+<p>上下文工程，说到底就是 Prompt 工程长大后该有的样子：</p>
+<blockquote>
+<p><strong>不问「这句话怎么措辞」，而问「模型下一个字会看到什么」。</strong></p>
+</blockquote>
+<p>到这里，第二层就结束了。你已经能搭出一个像样的 Agent。</p>
+<p>下一层（第三层）我们要开始<strong>动手训练模型</strong>——从「用模型」跨到「造模型」。</p>
+<p>丹成不必在我，火候自有记录。</p>
+<hr>
+<p><em>附注：本文框架参考 Anthropic《Effective context engineering for AI agents》、LangChain 的 write/select/compress/isolate 四策略、上下文失效模式分类、以及 Chroma Research 关于长上下文性能衰减的公开测试。代码为示意伪代码。</em></p>
+</div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/14/">temperature 与 top_p：控制模型「胆子」的两个旋钮</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/2/">Prompt 工程入门：从「念咒」到「配方」</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/12/">上下文窗口：模型的工作台有多大</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/10">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</body>
+</html>

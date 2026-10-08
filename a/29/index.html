@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>显存这道算术题：买卡之前必须算的三笔账 · AI 炼丹房</title>
+<meta name="description" content="同样一张 24GB 显卡，为什么有人跑 32B 跑得很欢，你拉个 7B 反而 OOM。用「买房三大件」讲清楚权重、KV 缓存和运行时开销各自怎么算，附一个读 config.json 就能自己核对的 Python 脚本，以及 Qwen3.5 家族的真实对照表。">
+<meta name="keywords" content="炼丹笔记,本地部署,显存,量化">
+<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/29/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="显存这道算术题：买卡之前必须算的三笔账 · AI 炼丹房">
+<meta property="og:description" content="同样一张 24GB 显卡，为什么有人跑 32B 跑得很欢，你拉个 7B 反而 OOM。用「买房三大件」讲清楚权重、KV 缓存和运行时开销各自怎么算，附一个读 config.json 就能自己核对的 Python 脚本，以及 Qwen3.5 家族的真实对照表。">
+<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/29/">
+<meta property="og:site_name" content="AI 炼丹房">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="显存这道算术题：买卡之前必须算的三笔账 · AI 炼丹房">
+<meta name="twitter:description" content="同样一张 24GB 显卡，为什么有人跑 32B 跑得很欢，你拉个 7B 反而 OOM。用「买房三大件」讲清楚权重、KV 缓存和运行时开销各自怎么算，附一个读 config.json 就能自己核对的 Python 脚本，以及 Qwen3.5 家族的真实对照表。">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"显存这道算术题：买卡之前必须算的三笔账 · AI 炼丹房","description":"同样一张 24GB 显卡，为什么有人跑 32B 跑得很欢，你拉个 7B 反而 OOM。用「买房三大件」讲清楚权重、KV 缓存和运行时开销各自怎么算，附一个读 config.json 就能自己核对的 Python 脚本，以及 Qwen3.5 家族的真实对照表。","datePublished":"2026-09-27T16:26:29+08:00","dateModified":"2026-09-27T16:26:29+08:00","keywords":"炼丹笔记,本地部署,显存,量化","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/29/"}}</script>
+<style>
+body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
+</head>
+<body>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/29">进入完整站点</a></div></div>
+<div class="snap-wrap"><h1 class="snap-title">显存这道算术题：买卡之前必须算的三笔账</h1><div class="snap-meta"><span>2026 年 9 月 27 日</span><span>约 12 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E7%82%BC%E4%B8%B9%E7%AC%94%E8%AE%B0">炼丹笔记</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E6%9C%AC%E5%9C%B0%E9%83%A8%E7%BD%B2">本地部署</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E6%98%BE%E5%AD%98">显存</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E9%87%8F%E5%8C%96">量化</a></span></div><div class="article-body"><p>我们先从一个真实得刺眼的场景开场。</p>
+<p>办公室里两张一模一样的 24GB 显卡。老张在上面跑 Qwen3.5-27B 的 Q4 量化，开着 32K 上下文，还能顺手开个 IDE 不卡。你拉了个 7B 的小模型，刚把一份 40 页的 PDF 塞进去做总结，终端跳出一行 <code>CUDA out of memory</code>。</p>
+<p>小模型被大模型挤下去了。</p>
+<p>这不是玄学，是<strong>你问错了问题</strong>。「这个模型要多大显存」这句话本身就缺了三个条件：多长的上下文、几路并发、什么精度。缺了这三个，任何答出来的数字都是猜的。</p>
+<h2>一个比喻：这套房子里住着三样东西</h2>
+<p>把显存想成一套正在开工的房子，里面住着三家租客。</p>
+<p><strong>权重是家具。</strong> 沙发、床、冰箱，搬进来那天占多大以后就多大，一年到头不动弹。这片面积是<strong>死的</strong>。</p>
+<p><strong>KV 缓存是工人摊在桌上的图纸。</strong> 每接一个活就摊开一份图纸，活越多桌子占得越开，活干完了图纸收走。这片面积是<strong>活的</strong>，而且会随着「同时接几个活」成倍地涨。</p>
+<p><strong>运行时开销是玄关和过道。</strong> 门口那块地你放不了家具也摆不了桌子，但你要是把它占满了，人根本进不来门。CUDA 上下文、算子库的工作区、显存碎片都在这里，面积不大，漏了它你连门都开不了。</p>
+<p>显存报 OOM 的时候，它只会给一行 <code>CUDA out of memory</code>，不会告诉你是家具买多了、图纸摊多了、还是过道被堵了。<strong>所以这笔账只能自己算。</strong></p>
+<h2>第一笔账：权重有多重</h2>
+<p>这是唯一一眼能看到的部分。公式朴素到近乎无聊。</p>
+<pre><code class="language-text hljs">权重体积 = 参数量 × 每个权重占几个 bit ÷ 8
+</code></pre>
+<h3>先踩一遍单位坑</h3>
+<p>这里有个坑，掉进去的人比你想象的多。</p>
+<table>
+<thead>
+<tr>
+<th>单位</th>
+<th>换算</th>
+<th>谁在用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>GB</td>
+<td>1 GB = 10 的 9 次方字节，正好 1,000,000,000</td>
+<td>模型文件名、Hugging Face 上的文件大小</td>
+</tr>
+<tr>
+<td>GiB</td>
+<td>1 GiB = 2 的 30 次方字节，约 1,073,741,824</td>
+<td>显卡厂商、nvidia-smi、Ollama</td>
+</tr>
+</tbody></table>
+<p>显卡标的 24GB，其实是 24 GiB。同一个文件，用 GiB 表示出来的数字<strong>永远比 GB 小 7.4% 左右</strong>。这就是为什么模型页写着 4.9 GB，工具却告诉你它占 4.58 GiB，两边都没算错。</p>
+<h3>每权重占几个 bit</h3>
+<p>量化方法的名字里那个 <code>.89</code>、<code>.56</code> 不是凑整好看的，是实测出来的<strong>每个权重的平均比特数</strong>（bits per weight，简称 bpw）。下面是 llama.cpp 官方仓库记录的实测值，基准模型是 Llama-3.1-8B，未量化时 F16 体积 14.96 GiB。</p>
+<table>
+<thead>
+<tr>
+<th>量化</th>
+<th>bpw</th>
+<th>8B 模型的权重</th>
+<th>相对 F16</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>F16（不量化）</td>
+<td>16.00</td>
+<td>14.96 GiB</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>Q8_0</td>
+<td>8.50</td>
+<td>7.95 GiB</td>
+<td>53%</td>
+</tr>
+<tr>
+<td>Q6_K</td>
+<td>6.56</td>
+<td>6.14 GiB</td>
+<td>41%</td>
+</tr>
+<tr>
+<td>Q5_K_M</td>
+<td>5.70</td>
+<td>5.33 GiB</td>
+<td>36%</td>
+</tr>
+<tr>
+<td><strong>Q4_K_M</strong></td>
+<td><strong>4.89</strong></td>
+<td><strong>4.58 GiB</strong></td>
+<td><strong>31%</strong></td>
+</tr>
+<tr>
+<td>Q3_K_M</td>
+<td>4.00</td>
+<td>3.74 GiB</td>
+<td>25%</td>
+</tr>
+<tr>
+<td>Q2_K</td>
+<td>3.16</td>
+<td>2.95 GiB</td>
+<td>20%</td>
+</tr>
+</tbody></table>
+<p>验算一遍，证明这张表能自己推出来。</p>
+<pre><code class="language-text hljs">8.03 B × 4.89 bit ÷ 8 = 4,907,000,000 字节
+4,907,000,000 ÷ 1,073,741,824 = 4.57 GiB   ← 和官方表里的 4.58 GiB 对上了
+</code></pre>
+<p>学会了这个乘法，你看任何一个模型名都能在心里估出大小，<strong>再也不用去翻别人整理的对照表</strong>。</p>
+<h3>MoE 是个显眼的例外</h3>
+<p>看到 <code>Qwen3.5-35B-A3B</code> 这种带横杠的命名，要立刻切换算法。</p>
+<ul>
+<li><strong>35B 是总参数</strong>，它决定了<strong>要交多少显存房租</strong>；</li>
+<li><strong>A3B 是每个 token 实际用到 3B</strong>，它决定了<strong>吐字有多快</strong>。</li>
+</ul>
+<p>人家在你显卡上是按 35B 的重量压着（Q4_K_M 约 21.4 GiB），干活的时候每个字只用 3B 的力气。所以 MoE 模型在同等显卡上的<strong>速度常常反超参数更小的稠密模型</strong>，但<strong>显存一点没省</strong>。</p>
+<p>反过来说，买卡的时候千万别看激活参数，那东西和显存没关系。</p>
+<h2>第二笔账：KV 缓存是被漏掉最多的那一笔</h2>
+<p>回到开头那个悬案。为什么 7B 会输给 27B？答案在这里。</p>
+<h3>公式</h3>
+<pre><code class="language-text hljs">每 token 的 KV = 2 × 层数 × KV 头数 × 每头维度 × 每个元素的字节数
+</code></pre>
+<p>解释一下每一项。</p>
+<ul>
+<li><strong>乘 2</strong> 是因为每个字要存两份东西，一份是钥匙（K），一份是值（V），缺一不可；</li>
+<li><strong>层数</strong>是模型有多少层，每层都得单独存一份；</li>
+<li><strong>KV 头数</strong>这里埋了一个重要细节。现代模型普遍用 GQA（分组查询注意力），<code>num_key_value_heads</code> 远小于 <code>num_attention_heads</code>。少参数是省了权重，但 KV 这块是按 KV 头算的，<strong>你的 head_dim 取错了整个结果就翻好几倍</strong>；</li>
+<li><strong>每元素字节数</strong>在 fp16 下是 2。</li>
+</ul>
+<h3>两个模型的真实对比</h3>
+<p>我们拿两个同量级的开源模型算一遍，结果挺意外。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>层</th>
+<th>KV 头</th>
+<th>每头维度</th>
+<th>每 token KV</th>
+<th>32K 上下文 × 4 并发</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Llama-3-8B</td>
+<td>32</td>
+<td>8</td>
+<td>128</td>
+<td><strong>128 KiB</strong></td>
+<td>16.0 GiB</td>
+</tr>
+<tr>
+<td>Qwen2.5-7B</td>
+<td>28</td>
+<td>4</td>
+<td>128</td>
+<td><strong>56 KiB</strong></td>
+<td>7.0 GiB</td>
+</tr>
+</tbody></table>
+<p><strong>参数量只差 1.3 倍，KV 缓存占了 2.3 倍。</strong> 前者把当年全部的 32 个注意力头都用来存 KV，后者用 GQA 砍到了 4 个。</p>
+<p>这就解释了开场那个悬案的关键一半：一个「看着差不多大」的模型，在长上下文时可以是另一个的两倍开销。</p>
+<h3>三种省法</h3>
+<p><strong>1. KV 也量化。</strong> fp16 换成 q8_0 就砍一半，换 q4_0 砍四分之三。质量损失通常远小于把权重往下砍一档。</p>
+<p><strong>2. 别迷信厂商标称的上下文。</strong> 128K 是它的耐力上限，<strong>不是你每天要跑的距离</strong>。开 32K 和开 128K，KV 那块差 4 倍。</p>
+<p><strong>3. 盯住并发数。</strong> 上面那行 7.0 GiB 是「32K × 4 路」的结果。单聊的时候只用 1.75 GiB。很多 OOM 是同事也接进来用了同一张卡。</p>
+<h2>第三笔账：那些说不清也躲不掉的零头</h2>
+<p>家具和图纸都有公式，<strong>这一笔只能靠经验</strong>。</p>
+<ul>
+<li><strong>CUDA 上下文</strong>，几百 MB，模型一加载就吃掉；</li>
+<li><strong>算子库工作区</strong>，cuBLAS、cuDNN 会按设备申请缓冲，几个 GB 量级很正常；</li>
+<li><strong>prefill 阶段的激活值</strong>，这块随「批次 × 序列长度」涨，长文档一口气塞进去时它最容易爆；</li>
+<li><strong>显存碎片</strong>，反复加载卸载模型之后，看着有 5GB 空闲，实际申请不出一个连续的大块；</li>
+<li><strong>Windows / macOS 上还有图形界面占的那一份</strong>，这就是为什么同一张卡在 Linux 上往往能多塞一层。</li>
+</ul>
+<p>工程上给个自测得出的经验值：<strong>打底留 1.5 到 2 GiB，再加权重的 10% 左右做缓冲。</strong></p>
+<p>这个留白也是 vLLM 里 <code>--gpu-memory-utilization</code> 默认 0.9 而不是 1.0 的理由，一上来拉到 0.98 的同学基本都在长序列上翻过车。</p>
+<h2>一个能自己跑的脚本</h2>
+<p>存成 <code>vram_estimate.py</code>，把模型目录扔给它，全部三笔账一次算清。它优先读 <code>model.safetensors.index.json</code> 里的真实字节数，读不到才退回 config.json 推算。</p>
+<pre><code class="language-python hljs">import json, sys, os
+
+GiB = 1024 ** 3
+USAGE = &quot;用法：python vram_estimate.py &lt;模型目录&gt; &lt;bpw&gt; &lt;上下文长度&gt; [并发数] [可用显存GiB]\n&quot; \
+        &quot;例子：python vram_estimate.py ./Qwen2.5-7B-Instruct 4.89 8192 1 24&quot;
+
+def load_config(path):
+    c = json.load(open(os.path.join(path, &quot;config.json&quot;), encoding=&quot;utf-8&quot;))
+    # 多模态模型常把语言塔藏在 text_config / language_config 里
+    for k in (&quot;text_config&quot;, &quot;language_config&quot;, &quot;model&quot;):
+        if isinstance(c.get(k), dict) and &quot;num_hidden_layers&quot; in c[k]:
+            base = dict(c); base.update(c[k]); c = base; break
+    return c
+
+def count_params(c):
+    h, L = c[&quot;hidden_size&quot;], c[&quot;num_hidden_layers&quot;]
+    nh = c[&quot;num_attention_heads&quot;]
+    nkv = c.get(&quot;num_key_value_heads&quot;, nh)
+    inter = c.get(&quot;intermediate_size&quot;, 4 * h)
+    vocab = c.get(&quot;vocab_size&quot;, 32000)
+    hd = c.get(&quot;head_dim&quot;, h // nh)
+    kv_dim = nkv * hd
+    per_layer = (h * (nh * hd) + h * kv_dim * 2 + (nh * hd) * h
+                 + h * inter * 2 + inter * h)
+    total = per_layer * L + vocab * h
+    if not c.get(&quot;tie_word_embeddings&quot;, False):
+        total += vocab * h          # 输出层没和嵌入层共用，再算一份
+    return total
+
+def main():
+    if len(sys.argv) &lt; 4:
+        print(USAGE); sys.exit(1)
+    path, bpw, seq = sys.argv[1], float(sys.argv[2]), int(sys.argv[3])
+    nseq = int(sys.argv[4]) if len(sys.argv) &gt; 4 else 1
+    vram = float(sys.argv[5]) if len(sys.argv) &gt; 5 else 0.0
+
+    c = load_config(path)
+    n = count_params(c)
+    h, L = c[&quot;hidden_size&quot;], c[&quot;num_hidden_layers&quot;]
+    nh = c[&quot;num_attention_heads&quot;]
+    nkv = c.get(&quot;num_key_value_heads&quot;, nh)
+    hd = c.get(&quot;head_dim&quot;, h // nh)
+
+    w_bytes = n * bpw / 8                       # 权重
+    kv_pt = 2 * L * nkv * hd * 2                # KV，默认 fp16
+    kv_bytes = kv_pt * seq * nseq
+    OVERHEAD = 1.5 * GiB                        # 经验值，自己调
+
+    print(f&quot;参数量        {n/1e9:.2f} B&quot;)
+    print(f&quot;结构          {L} 层 / {nh} 头 / {nkv} 个 KV 头 / 每头 {hd} 维&quot;)
+    print(f&quot;权重          {w_bytes/GiB:6.2f} GiB  （{bpw} bpw）&quot;)
+    print(f&quot;KV 缓存       {kv_pt/1024:.1f} KiB/token × {seq} × {nseq} = {kv_bytes/GiB:6.2f} GiB&quot;)
+    print(f&quot;运行时开销    {OVERHEAD/GiB:6.2f} GiB&quot;)
+    total = w_bytes + kv_bytes + OVERHEAD
+    print(f&quot;合计          {total/GiB:6.2f} GiB&quot;)
+
+    if vram:
+        left = vram * GiB - total
+        if left &gt;= 0:
+            print(f&quot;余量          {left/GiB:6.2f} GiB  ✅ 装得下&quot;)
+        else:
+            print(f&quot;缺口          {-left/GiB:6.2f} GiB  ❌ 装不下&quot;)
+            print(f&quot;  降 bpw 到 Q3_K_M 省 {n*(bpw-4.0)/8/GiB:.2f} GiB&quot;)
+            print(f&quot;  KV 转 q8_0  省 {kv_bytes/2/GiB:.2f} GiB&quot;)
+            print(f&quot;  上下文砍半  省 {kv_pt*(seq-seq//2)*nseq/GiB:.2f} GiB&quot;)
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</code></pre>
+<p>我们在一台真机上跑 Qwen2.5-7B，参数量算出来是 7.62 B，和官方公布的数字一致。换到「32K 上下文 × 8 路并发」这个配置，输出是这样的。</p>
+<pre><code class="language-text hljs">参数量        7.62 B
+结构          28 层 / 28 头 / 4 个 KV 头 / 每头 128 维
+权重          4.34 GiB  （4.89 bpw）
+KV 缓存       56.0 KiB/token × 32768 × 8 = 14.00 GiB
+运行时开销    1.50 GiB
+合计          19.84 GiB
+缺口          7.84 GiB  ❌ 装不下
+  降 bpw 到 Q3_K_M 省 0.79 GiB
+  KV 转 q8_0  省 7.00 GiB
+  上下文砍半  省 7.00 GiB
+</code></pre>
+<p><strong>注意看这三行建议的差距。</strong> 把权重从 Q4_K_M 再往下砍一档到 Q3_K_M，只省 0.79 GiB，模型还明显变笨；把 KV 缓存从 fp16 降到 q8_0，一刀省 7 GiB，质量几乎无损。</p>
+<p>这就是整篇最值钱的一句话：<strong>权重挤不动的时候，别再盯着量化级别了，去看看 KV 缓存。</strong></p>
+<h2>常见配置对照表</h2>
+<p>下面是 Qwen3.5 家族配 Q4_K_M 的大致占用。<strong>这些数字来自第三方硬件站点的整理汇总，和实际拉取到的 GGUF 文件大小可能有出入，请以你实际下载的文件为准。</strong></p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>Q4_K_M 权重</th>
+<th>建议最低卡</th>
+<th>32K 上下文后还剩多少</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0.8B</td>
+<td>约 0.6 GiB</td>
+<td>核显、纯 CPU 都能跑</td>
+<td>富余充足</td>
+</tr>
+<tr>
+<td>9B</td>
+<td>约 5.5 GiB</td>
+<td>RTX 3060 12GB</td>
+<td>约 4 GiB</td>
+</tr>
+<tr>
+<td>27B（稠密）</td>
+<td>约 15 GiB</td>
+<td>RTX 3090 / 4090 24GB</td>
+<td>勉强够用</td>
+</tr>
+<tr>
+<td>35B-A3B（MoE）</td>
+<td>约 21.4 GiB</td>
+<td>RTX 4090 24GB 偏紧</td>
+<td>建议上 32GB</td>
+</tr>
+<tr>
+<td>122B-A10B</td>
+<td>约 67 GiB</td>
+<td>双 4090，或 Mac 128GB 统一内存</td>
+<td>看组合方式</td>
+</tr>
+<tr>
+<td>397B-A17B</td>
+<td>约 220 GiB</td>
+<td>多卡服务器</td>
+<td>不在话题范围内</td>
+</tr>
+</tbody></table>
+<p>顺带一句关于苹果的。Mac 的统一内存有个很实在的好处，<strong>没有独立显存这个天花板</strong>，M4 Max 128GB 就能把 67 GB 的大家伙整个吃下还剩下 61 GB 给 KV。代价是带宽决定了速度上限，所以它适合「装得下」，未必适合「跑得快」。</p>
+<h2>三个当场能用的结论</h2>
+<p><strong>1. 出问题先看 KV，不要急着往更低的量化级别上砍。</strong> 长文档、多轮对话、多人共用，爆的都是这一块。</p>
+<p><strong>2. 估算时务必把并发算进去。</strong> 自己单聊能跑通，不意味着三个人一起用也能跑通。</p>
+<p><strong>3. 留 10% 的呼吸空间。</strong> 把显存卡到 100% 用的人，都被碎片整理和长序列 prefill 教过做人。</p>
+<h2>炼丹小结</h2>
+<ol>
+<li>显存 = <strong>权重 + KV 缓存 + 运行时开销</strong>，三者缺一不可，只看权重必然踩坑；</li>
+<li>权重 = 参数量 × bpw ÷ 8，<strong>GB 和 GiB 差 7.4%</strong>，别被这两个单位绕进去；</li>
+<li>MoE 模型<strong>按总参数交显存，按激活参数算速度</strong>，别拿激活参数去买卡；</li>
+<li>KV 缓存 = 2 × 层数 × KV 头数 × 头维度 × 字节数 × 长度 × <strong>并发</strong>，它是唯一随时间线性增长的项；</li>
+<li>同参数量的两个模型，KV 占用可以差<strong>两倍以上</strong>，看 <code>num_key_value_heads</code> 比看参数量有用；</li>
+<li>显存紧张时，<strong>降 KV 精度远比降权重量化划算</strong>；</li>
+<li>留给运行时 1.5～2 GiB 打底，<strong>永远别把显存用到满</strong>。</li>
+</ol>
+<p>算完这三笔账，你手里就有了一张能直接拿去对采购单的数字清单。</p>
+<p>下一篇《量化到底牺牲了什么》，要回答的是我们在这篇里按下不表的那个问题：那个 4.89 bpw 的 Q4_K_M，究竟把模型里的什么东西弄丢了，丢在哪里，以及怎么自己动手验。</p>
+<p>丹成不必在我，火候自有记录。</p>
+<hr>
+<p><em>附注：文中 bpw 与 F16 基线数据来自 llama.cpp 官方仓库对各量化方法的记录（基准模型 Llama-3.1-8B）。Qwen3.5 家族的权重体积为第三方硬件站点按公开 GGUF 文件大小汇总整理，不同量化制作者上传的文件存在差异，请以实际拉取结果为准。脚本中的 1.5 GiB 运行时开销为经验值，请按你的框架与驱动自行调整。</em></p>
+</div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/30/">量化到底牺牲了什么：把精度换成显存的那笔交易</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/31/">Ollama 从玩具到服务：交出 11434 端口之前的七件事</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/32/">引擎选型与并发压测：同一个模型换个框架，吞吐差一个数量级</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/29">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Token 是什么：为什么它数不清 strawberry 里有几个 r · AI 炼丹房</title>
+<meta name="description" content="模型眼里的文字不是一个个字母或汉字，而是一块块「token」。搞懂这个，你就明白了三件事：为什么按 token 计费、为什么上下文有长度上限、以及为什么模型连数数这种小事都会翻车。">
+<meta name="keywords" content="原理,Token,大模型,入门">
+<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/16/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Token 是什么：为什么它数不清 strawberry 里有几个 r · AI 炼丹房">
+<meta property="og:description" content="模型眼里的文字不是一个个字母或汉字，而是一块块「token」。搞懂这个，你就明白了三件事：为什么按 token 计费、为什么上下文有长度上限、以及为什么模型连数数这种小事都会翻车。">
+<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/16/">
+<meta property="og:site_name" content="AI 炼丹房">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Token 是什么：为什么它数不清 strawberry 里有几个 r · AI 炼丹房">
+<meta name="twitter:description" content="模型眼里的文字不是一个个字母或汉字，而是一块块「token」。搞懂这个，你就明白了三件事：为什么按 token 计费、为什么上下文有长度上限、以及为什么模型连数数这种小事都会翻车。">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Token 是什么：为什么它数不清 strawberry 里有几个 r · AI 炼丹房","description":"模型眼里的文字不是一个个字母或汉字，而是一块块「token」。搞懂这个，你就明白了三件事：为什么按 token 计费、为什么上下文有长度上限、以及为什么模型连数数这种小事都会翻车。","datePublished":"2026-09-27T16:28:00+08:00","dateModified":"2026-09-27T16:28:00+08:00","keywords":"原理,Token,大模型,入门","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/16/"}}</script>
+<style>
+body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
+</head>
+<body>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/16">进入完整站点</a></div></div>
+<div class="snap-wrap"><h1 class="snap-title">Token 是什么：为什么它数不清 strawberry 里有几个 r</h1><div class="snap-meta"><span>2026 年 9 月 27 日</span><span>约 4 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%8E%9F%E7%90%86">原理</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/Token">Token</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%A4%A7%E6%A8%A1%E5%9E%8B">大模型</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%85%A5%E9%97%A8">入门</a></span></div><div class="article-body"><p>先做个小实验。打开任意模型问它：</p>
+<pre><code class="language-text hljs">strawberry 里有几个字母 r？
+</code></pre>
+<p>很多模型会答 2 个。正确答案是 <strong>3 个</strong>（st<strong>r</strong>awbe<strong>rr</strong>y）。</p>
+<p>这不是因为模型笨。<strong>是因为它压根没看到字母。</strong></p>
+<h2>模型眼里的文字：一块一块的，不是一个一个的</h2>
+<p>我们读 &quot;strawberry&quot; 是一个字母一个字母地看：s-t-r-a-w-b-e-r-r-y。</p>
+<p>模型看到的是<strong>预先切好的块</strong>，比如：</p>
+<pre><code class="language-text hljs">&quot;strawberry&quot;  →  [&quot;straw&quot;, &quot;berry&quot;]      或者  [&quot;str&quot;, &quot;aw&quot;, &quot;berry&quot;]
+</code></pre>
+<p>这些块就叫 <strong>token</strong>。模型的所有工作——读、想、写——都是在块的层面上进行的。</p>
+<p>所以你问它「有几个 r」，它面对的是两个块 <code>straw</code> 和 <code>berry</code>，它得<strong>猜</strong>这两个块里一共几个 r——而猜，是会错的。</p>
+<h2>中文也是一样</h2>
+<p>中文的切法常常比中文更有意思：</p>
+<pre><code class="language-text hljs">&quot;人工智能&quot;  →  [&quot;人工&quot;, &quot;智能&quot;]      ← 常见切法
+&quot;我喜欢吃火锅&quot;  →  [&quot;我&quot;, &quot;喜欢&quot;, &quot;吃&quot;, &quot;火锅&quot;]
+</code></pre>
+<p>你会发现：<strong>常见的词会被合并成一个 token</strong>，不常见的词才会被拆碎。</p>
+<p>这带来一个反直觉的现象：</p>
+<blockquote>
+<p>同一个意思，用常见的说法写，比用生僻说法写<strong>更省 token、模型也更好理解</strong>。</p>
+</blockquote>
+<p>因为它脑瓜里存的是「人工」+「智能」这两个熟人，而不是零散的笔画。</p>
+<h2>为什么这件事很重要：三个直接影响</h2>
+<h3>1. 钱是按 token 算的，不是按字数</h3>
+<p>你调用 API 付费，账单上是输入 token 数 + 输出 token 数。</p>
+<p><strong>大致的经验值</strong>（不同模型的分词器不一样，仅供估算）：</p>
+<table>
+<thead>
+<tr>
+<th>内容</th>
+<th>大约多少 token</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1 个英文单词</td>
+<td>约 1.3 个 token</td>
+</tr>
+<tr>
+<td>100 个英文单词</td>
+<td>约 130 个 token</td>
+</tr>
+<tr>
+<td>100 个汉字</td>
+<td>约 70～150 个 token（看分词器和用词）</td>
+</tr>
+</tbody></table>
+<p>所以：<strong>同样一段话，中文往往比英文「贵」一些</strong>；而同样的中文，用词常见与否也会影响 token 数。</p>
+<h3>2. 上下文窗口是按 token 算的</h3>
+<p>你常听到「这个模型支持 12.8 万 token 上下文」——<strong>不是 12.8 万字</strong>。</p>
+<p>按上面的估算，12.8 万 token 大约是一本十几万字的书。对话聊长了、资料塞多了，都会把这个额度吃光。</p>
+<p>（为什么「塞满」不是好事，第二层《上下文窗口》会细讲。）</p>
+<h3>3. 它解释了模型的一类「低级错误」</h3>
+<p>除了数 r，还有这些经典翻车：</p>
+<table>
+<thead>
+<tr>
+<th>任务</th>
+<th>为什么容易错</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>数某个字母出现几次</td>
+<td>它看到的是块，不是字母</td>
+</tr>
+<tr>
+<td>倒着念一个单词</td>
+<td>它从不「反着看」文本</td>
+</tr>
+<tr>
+<td>判断两句是否押韵</td>
+<td>押韵看发音，它只看到拼写块</td>
+</tr>
+</tbody></table>
+<p><strong>实用结论</strong>：凡是「逐字符操作」的活儿，别指望模型直接干。让它<strong>写代码去干</strong>，代码是逐字符的，模型不是。</p>
+<pre><code class="language-text hljs">❌ 「这个字符串里有多少个大写字母？」   → 它可能猜错
+✅ 「写一段 Python 统计这个字符串里的大写字母数量，并只输出数字。」
+   → 交给解释器执行，100% 准确
+</code></pre>
+<h2>亲手看看 token 长什么样</h2>
+<p>如果你装了 Python，可以装个分词器自己看（以常用的 GPT 系分词器为例）：</p>
+<pre><code class="language-bash hljs">pip install tiktoken
+</code></pre>
+<pre><code class="language-python hljs">import tiktoken
+enc = tiktoken.get_encoding(&quot;cl100k_base&quot;)
+
+for s in [&quot;strawberry&quot;, &quot;人工智能&quot;, &quot;我喜欢吃火锅&quot;]:
+    ids = enc.encode(s)
+    print(s, &quot;→&quot;, ids, &quot;→&quot;, [enc.decode([i]) for i in ids], f&quot;共 {len(ids)} token&quot;)
+</code></pre>
+<p>你会亲眼看到每个词被切成了什么。<strong>这个体验比读十遍解释都管用。</strong></p>
+<h2>炼丹小结</h2>
+<ol>
+<li><strong>token 是模型读写的最小单位</strong>，不是字，也不是字母；</li>
+<li>常见词合成一个 token，生僻词被拆碎——所以<strong>用词越常规越省</strong>；</li>
+<li>计费、上下文长度，全都按 token 算；</li>
+<li>数数字母、倒着念这类「逐字符」任务，<strong>让模型写代码去执行</strong>，别让它硬猜；</li>
+<li>下次看到「支持 20 万 token 上下文」，记得换算一下，那<strong>不是 20 万字</strong>。</li>
+</ol>
+<p>理解了 token，你就知道了模型这个「工作台」的计量单位。下一层讲 RAG 和上下文窗口时，你会反复用到它。</p>
+<p>丹成不必在我，火候自有记录。</p>
+</div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/17/">大模型其实在玩「猜下一个字」</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/15/">幻觉：它为什么会一本正经地胡说八道</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/4/">学习路线图：从「AI 是什么」到「自己炼一炉丹」</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/16">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</body>
+</html>

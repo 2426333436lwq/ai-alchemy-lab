@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>幻觉：它为什么会一本正经地胡说八道 · AI 炼丹房</title>
+<meta name="description" content="模型不是在说谎，它是在「接一段最像真话的话」。搞清楚幻觉的三种常见形态和四个可操作的防法，你就知道什么时候能信它、什么时候必须自己查。">
+<meta name="keywords" content="原理,幻觉,大模型,入门">
+<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/15/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="幻觉：它为什么会一本正经地胡说八道 · AI 炼丹房">
+<meta property="og:description" content="模型不是在说谎，它是在「接一段最像真话的话」。搞清楚幻觉的三种常见形态和四个可操作的防法，你就知道什么时候能信它、什么时候必须自己查。">
+<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/15/">
+<meta property="og:site_name" content="AI 炼丹房">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="幻觉：它为什么会一本正经地胡说八道 · AI 炼丹房">
+<meta name="twitter:description" content="模型不是在说谎，它是在「接一段最像真话的话」。搞清楚幻觉的三种常见形态和四个可操作的防法，你就知道什么时候能信它、什么时候必须自己查。">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"幻觉：它为什么会一本正经地胡说八道 · AI 炼丹房","description":"模型不是在说谎，它是在「接一段最像真话的话」。搞清楚幻觉的三种常见形态和四个可操作的防法，你就知道什么时候能信它、什么时候必须自己查。","datePublished":"2026-09-27T16:27:00+08:00","dateModified":"2026-09-27T16:27:00+08:00","keywords":"原理,幻觉,大模型,入门","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/15/"}}</script>
+<style>
+body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
+</head>
+<body>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/15">进入完整站点</a></div></div>
+<div class="snap-wrap"><h1 class="snap-title">幻觉：它为什么会一本正经地胡说八道</h1><div class="snap-meta"><span>2026 年 9 月 27 日</span><span>约 5 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%8E%9F%E7%90%86">原理</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%B9%BB%E8%A7%89">幻觉</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%A4%A7%E6%A8%A1%E5%9E%8B">大模型</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%85%A5%E9%97%A8">入门</a></span></div><div class="article-body"><p>上一层我们说过：模型只做一件事——<strong>猜下一个字</strong>。它判断好坏的标准是「像不像」，不是「对不对」。</p>
+<p><strong>幻觉就是这条机制的直接后果。</strong> 它不是 bug，是这套工作方式的必然产物。</p>
+<h2>先做个实验</h2>
+<p>问模型（下面这个公司法和法条是我编的，不存在）：</p>
+<pre><code class="language-text hljs">《2024 年企业数据合规管理办法》第 17 条是怎么规定的？
+</code></pre>
+<p>你很可能得到一段<strong>极其具体的回答</strong>：条款原文、适用情形、处罚标准，语气笃定，格式工整。</p>
+<p>唯一的问题是：<strong>这个法条不存在。</strong></p>
+<p>它没在骗你。它在想：「用户问了一条法规的内容，那『一条法规的内容』通常长什么样？」然后接了一段最像的。</p>
+<h2>幻觉的三种常见形态</h2>
+<table>
+<thead>
+<tr>
+<th>形态</th>
+<th>表现</th>
+<th>例子</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>编造事实</strong></td>
+<td>凭空生成不存在的人、事、物</td>
+<td>编一个不存在的书名和作者简介</td>
+</tr>
+<tr>
+<td><strong>编造引用</strong></td>
+<td>给出看似真实的来源，但查无此物</td>
+<td>引用一篇「某大学 2023 年的论文」，标题作者年份齐全，全是假的</td>
+</tr>
+<tr>
+<td><strong>过度自信</strong></td>
+<td>明明不知道，但语气百分百确定</td>
+<td>把猜测说成定论，从不说「我不确定」</td>
+</tr>
+</tbody></table>
+<p><strong>第三种最危险。</strong> 前两种你还能靠核查发现，第三种会让你根本不觉得需要核查。</p>
+<h2>为什么会这样：三个根因</h2>
+<p><strong>1. 训练目标是「像」，不是「真」。</strong>
+训练时它读海量文本，任务是「接得准」。没人教它「不确定的时候要承认」。</p>
+<p><strong>2. 它没有「查证」这个动作。</strong>
+它不会去翻书确认。它的全部知识都压缩在参数里，回答时只是把参数里的模式调出来。</p>
+<p><strong>3. 它默认必须接下去。</strong>
+对它而言，「我不知道」只是无数种可能的续写之一，而且通常不是概率最高的那种——因为网上的文本里，「我不知道」远不如「答案是……」常见。</p>
+<h2>四个马上能用的防法</h2>
+<h3>防法一：给它资料（最有效）</h3>
+<p><strong>没有资料时</strong>，它只能靠猜；<strong>给了资料</strong>，它就有东西可依。这就是 RAG（第二层会细讲）。</p>
+<pre><code class="language-text hljs">请只根据以下资料回答问题。如果资料中没有提到，
+请直接回答「资料中没有提到」，不要自行补充。
+
+&lt;资料&gt;
+（这里放你的文档内容）
+&lt;/资料&gt;
+
+问题：……
+</code></pre>
+<p><strong>关键在那句「没有提到就直接说没有」。</strong> 加上这一句，编造率会断崖式下降——因为你给了它一个「体面的退出选项」。</p>
+<h3>防法二：要求给来源，并且去查</h3>
+<pre><code class="language-text hljs">请回答，并为每个关键事实标注来源。
+如果某个事实你无法给出来源，请明确说明。
+</code></pre>
+<p>然后<strong>自己去查那些来源</strong>。这是常识，但在 AI 时代被遗忘得太快了。</p>
+<blockquote>
+<p>⚠️ 注意：它给出的来源<strong>也可能是编的</strong>。给来源只是降低了编造的难度，不等于免检。</p>
+</blockquote>
+<h3>防法三：让它先说不确定，别让它一次定稿</h3>
+<pre><code class="language-text hljs">请先列出你对这个问题的已知部分和不确定部分，
+然后再给出回答。
+</code></pre>
+<p>把「想」和「答」分开，会显著降低它拍脑袋的概率。</p>
+<h3>防法四：重要的事，让它换个方式交叉验证</h3>
+<pre><code class="language-text hljs">第一遍：直接回答。
+第二遍：请找出你第一遍回答中可能有问题的地方。
+</code></pre>
+<p>同一个问题用两种角度问，矛盾的地方就是可疑点。</p>
+<h2>一张「什么时候不能信它」的清单</h2>
+<p>这些场景，务必人工核查：</p>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>法律条文、法规条款</strong>——编一条看起来很像的法条，是它的拿手好戏</li>
+<li><input disabled="" type="checkbox"> <strong>论文、书籍、判例的引用</strong>——标题作者年份能编得严丝合缝</li>
+<li><input disabled="" type="checkbox"> <strong>医疗、金融、安全相关</strong>——错了要出事</li>
+<li><input disabled="" type="checkbox"> <strong>具体数字和统计</strong>——它不记得精确数字，只会给个「合理的」</li>
+<li><input disabled="" type="checkbox"> <strong>实时信息</strong>（今天的新闻、当前价格）——它的知识有截止日期</li>
+</ul>
+<p>反过来，这些场景它相对可信：</p>
+<ul>
+<li>✅ 格式转换、改写润色、翻译</li>
+<li>✅ 代码草稿（但要自己跑）</li>
+<li>✅ 方案讨论、思路启发、头脑风暴</li>
+<li>✅ 对<strong>你提供的资料</strong>做总结归纳</li>
+</ul>
+<h2>换个角度：幻觉不全是坏事</h2>
+<p>在创作场景里，「接一段最像的话」恰恰是我们想要的：</p>
+<ul>
+<li>写小说、写广告文案、起名字、头脑风暴——<strong>幻觉就是创造力</strong>。</li>
+</ul>
+<p>所以真正的问题不是「消除幻觉」，而是<strong>分清你在哪个场景</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>你要的态度</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>查事实、写代码、做分析</td>
+<td>幻觉 = 事故，必须防</td>
+</tr>
+<tr>
+<td>写文案、想创意、做草稿</td>
+<td>幻觉 = 燃料，尽管用</td>
+</tr>
+</tbody></table>
+<h2>炼丹小结</h2>
+<ol>
+<li>幻觉不是撒谎，是**「接了一段最像真话的话」**——因为它的标准是「像」不是「真」；</li>
+<li>三种形态：编事实、编引用、过度自信（第三种最危险）；</li>
+<li>四个防法：<strong>给资料、要来源、先说不确定、交叉验证</strong>；</li>
+<li>法律/医疗/金融/数字/实时信息——<strong>必须人工核查</strong>；</li>
+<li>创作场景里它叫创造力，别一棍子打死。</li>
+</ol>
+<p>理解幻觉，你就从「被它唬住的人」变成了「知道什么时候该放心、什么时候该警惕的人」。</p>
+<p>下一步（第二层）我们会讲 RAG —— 目前对付幻觉最有效的工程手段。</p>
+<p>丹成不必在我，火候自有记录。</p>
+</div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/17/">大模型其实在玩「猜下一个字」</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/16/">Token 是什么：为什么它数不清 strawberry 里有几个 r</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/4/">学习路线图：从「AI 是什么」到「自己炼一炉丹」</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/15">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</body>
+</html>

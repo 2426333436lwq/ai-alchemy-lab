@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>量化到底牺牲了什么：把精度换成显存的那笔交易 · AI 炼丹房</title>
+<meta name="description" content="Q4_K_M 的自报困惑度只涨了 0.17，Q3_K_M 却涨了 0.66，中间隔着一道断崖。用两组互相独立的实测数据定位这道断崖在哪，讲清 K-quant 的混合精度、IQ 的重要性矩阵，以及 GPU 那边的 AWQ/GPTQ/FP8/NVFP4 是另一套完全不同的玩法。附一套能自己做验收的三步法。">
+<meta name="keywords" content="炼丹笔记,本地部署,量化,GGUF">
+<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/30/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="量化到底牺牲了什么：把精度换成显存的那笔交易 · AI 炼丹房">
+<meta property="og:description" content="Q4_K_M 的自报困惑度只涨了 0.17，Q3_K_M 却涨了 0.66，中间隔着一道断崖。用两组互相独立的实测数据定位这道断崖在哪，讲清 K-quant 的混合精度、IQ 的重要性矩阵，以及 GPU 那边的 AWQ/GPTQ/FP8/NVFP4 是另一套完全不同的玩法。附一套能自己做验收的三步法。">
+<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/30/">
+<meta property="og:site_name" content="AI 炼丹房">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="量化到底牺牲了什么：把精度换成显存的那笔交易 · AI 炼丹房">
+<meta name="twitter:description" content="Q4_K_M 的自报困惑度只涨了 0.17，Q3_K_M 却涨了 0.66，中间隔着一道断崖。用两组互相独立的实测数据定位这道断崖在哪，讲清 K-quant 的混合精度、IQ 的重要性矩阵，以及 GPU 那边的 AWQ/GPTQ/FP8/NVFP4 是另一套完全不同的玩法。附一套能自己做验收的三步法。">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"量化到底牺牲了什么：把精度换成显存的那笔交易 · AI 炼丹房","description":"Q4_K_M 的自报困惑度只涨了 0.17，Q3_K_M 却涨了 0.66，中间隔着一道断崖。用两组互相独立的实测数据定位这道断崖在哪，讲清 K-quant 的混合精度、IQ 的重要性矩阵，以及 GPU 那边的 AWQ/GPTQ/FP8/NVFP4 是另一套完全不同的玩法。附一套能自己做验收的三步法。","datePublished":"2026-09-27T16:26:28+08:00","dateModified":"2026-09-27T16:26:28+08:00","keywords":"炼丹笔记,本地部署,量化,GGUF","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/30/"}}</script>
+<style>
+body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
+</head>
+<body>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/30">进入完整站点</a></div></div>
+<div class="snap-wrap"><h1 class="snap-title">量化到底牺牲了什么：把精度换成显存的那笔交易</h1><div class="snap-meta"><span>2026 年 9 月 27 日</span><span>约 15 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E7%82%BC%E4%B8%B9%E7%AC%94%E8%AE%B0">炼丹笔记</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E6%9C%AC%E5%9C%B0%E9%83%A8%E7%BD%B2">本地部署</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E9%87%8F%E5%8C%96">量化</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/GGUF">GGUF</a></span></div><div class="article-body"><p>上一篇我们把账算清楚了，一个 8B 模型在 Q4_K_M 下占 4.58 GiB。但那个 4.89 bpw 不是白来的，它是把原本 16 bit 一个的权重砍到平均不到 5 bit 换来的。</p>
+<p>于是问题来了。<strong>被砍掉的那三分之二，到底丢的是什么东西？</strong></p>
+<p>这个问题的答案很反直觉，先看两组数字。</p>
+<h2>两组独立的实测，指向同一道断崖</h2>
+<p>第一组来自 llama.cpp 自己的 <code>llama-quantize</code> 工具，它在量化时会顺手算出「量化后模型相对 FP16 的困惑度增量」。基准是 Llama-3-8B。</p>
+<table>
+<thead>
+<tr>
+<th>量化</th>
+<th>perplexity 增量（越低越好）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Q8_0</td>
+<td>+0.0026</td>
+</tr>
+<tr>
+<td>Q6_K</td>
+<td>+0.0217</td>
+</tr>
+<tr>
+<td>Q5_K_M</td>
+<td>+0.0569</td>
+</tr>
+<tr>
+<td><strong>Q4_K_M</strong></td>
+<td><strong>+0.1754</strong></td>
+</tr>
+<tr>
+<td>Q4_K_S</td>
+<td>+0.2689</td>
+</tr>
+<tr>
+<td>Q3_K_M</td>
+<td>+0.6569</td>
+</tr>
+<tr>
+<td>Q2_K</td>
+<td>+3.5199</td>
+</tr>
+</tbody></table>
+<p>第二组来自一份社区流传很广的独立测量（Artefact2），它测的不是困惑度，是<strong>量化前后输出概率分布的 KL 散度中位数</strong>。基准是 Mistral-7B。</p>
+<table>
+<thead>
+<tr>
+<th>量化</th>
+<th>KLD 中位数（越低越好）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Q6_K</td>
+<td>0.0032</td>
+</tr>
+<tr>
+<td>Q5_K_M</td>
+<td>0.0043</td>
+</tr>
+<tr>
+<td><strong>Q4_K_M</strong></td>
+<td><strong>0.0075</strong></td>
+</tr>
+<tr>
+<td>Q4_K_S</td>
+<td>0.0083</td>
+</tr>
+<tr>
+<td>IQ4_XS</td>
+<td>0.0088</td>
+</tr>
+<tr>
+<td>Q3_K_M</td>
+<td>0.0171</td>
+</tr>
+<tr>
+<td>Q2_K</td>
+<td>0.0588</td>
+</tr>
+</tbody></table>
+<p><strong>这两组数据的模型不同、测量方法不同、作者不同，排出来的顺序却几乎一模一样。</strong> 这种交叉验证是最难伪造的证据，所以我们敢把它摆在第一段。</p>
+<p>从这两张表里能读出一件事：<strong>损失是非线性的。</strong></p>
+<p>从 Q8_0 到 Q5_K_M，误差从 0.0026 涨到 0.0569，涨了二十几倍，但绝对值仍然小到可以忽略。从 Q4_K_M 往下到 Q3_K_M，误差从 0.1754 跳到 0.6569，<strong>一步跨了近四倍</strong>。再往下到 Q2_K，直接是整个数量级的崩塌（3.5199）。</p>
+<p><strong>断崖在 4 bit 和 3 bit 之间，不在别的地方。</strong></p>
+<p>这就是为什么社区里所有人都告诉你同一个结论：Q4_K_M 是甜点，Q3 以下慎重。不是因为保守，是因为数据就是这么长的。</p>
+<h2>一个比喻：报纸上的网点</h2>
+<p>为什么损失会集中在一个点上突变？</p>
+<p>想象一张黑白照片要登到报纸上。报纸印不出连续灰阶，它只能用<strong>疏密不同的小黑点</strong>去模拟。</p>
+<p>网点够密的时候，你眼睛凑近了看得到点，退一步看是一张完整的照片。<strong>这时候再接着降密度，损失几乎察觉不到。</strong></p>
+<p>但网点一旦稀到某个临界值以下，人脸的轮廓开始糊成色块，眼睛和鼻子的边界叠在一起，再退一步也救不回来了。<strong>这时每少一个点，画面就崩一块。</strong></p>
+<p>模型权重的分布是大致正态的一坨，绝大多数值挤在 0 附近的一小段里。量化要做的事，就是给这一小段区间分配有限的若干个「标准刻度」。</p>
+<p>损失之所以非线性，是因为<strong>刻度够多的时候误差能互相抵消，刻度少到一定程度之后，某一个关键权重被分错了格子，误差会被后面的层一路放大</strong>。这不是线性累积，是乘性的。</p>
+<h2>先说清一件事：两个指标测的不是同一件事</h2>
+<p>回到开头那两张表，有个细节很容易被忽略。</p>
+<p>Q4_K_M 在困惑度上只涨了 0.17，看着几乎无损；但同一档在 KLD 上是 0.0075，<strong>是 Q6_K 的 2.3 倍</strong>。</p>
+<p>这俩数字不矛盾，它们问的问题不一样。</p>
+<ul>
+<li><strong>perplexity 问的是</strong>模型猜下一个字猜得准不准，是个<strong>平均意义</strong>下的指标；</li>
+<li><strong>KLD 问的是</strong>输出的概率分布和不量化时差多远，<strong>长尾</strong>的变化在这里无处可藏。</li>
+</ul>
+<p>所以会出一个很典型的现象：<strong>日常聊天你感觉不出 Q4 和 Q8 的区别，但让它做数学推理、写严谨代码、或者处理一门罕见的语言时，Q4 崩得比 Q8 快得多。</strong> 平均数掩盖了分布被压扁这件事。</p>
+<blockquote>
+<p><strong>实用结论</strong>：如果你的场景是开放闲聊或摘要，<strong>可以信 perplexity</strong>；如果做代码、数学、多语言、或者垂域严格抽取，<strong>必须看任务指标</strong>，别信那个 0.17。</p>
+</blockquote>
+<h2>K-quant 凭什么比老式量化强</h2>
+<p>名字里带 K 的这一族（Q2_K 到 Q8_K）和老的那批 Q4_0、Q5_1 最大的区别是：<strong>它内部是混精度的。</strong></p>
+<p>翻成我们能懂的话，它知道模型里不是每个张量都一样重要。</p>
+<p>按 llama.cpp 的实现方式，同一个基础精度下会有 S / M / L 三个后缀，代表「给关键张量开小灶」的激进程度。</p>
+<table>
+<thead>
+<tr>
+<th>后缀</th>
+<th>做法</th>
+<th>代价</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>_S</strong></td>
+<td>基本全家统一用基础精度</td>
+<td>最省，也最糙</td>
+</tr>
+<tr>
+<td><strong>_M</strong></td>
+<td>把 <code>attention.wv</code> 和 <code>feed_forward.w2</code> 这两个张量的一半提到更高精度</td>
+<td>略大，明显更好</td>
+</tr>
+<tr>
+<td><strong>_L</strong></td>
+<td>上述张量提到更高精度的比例更大</td>
+<td>最大，最接近原模型</td>
+</tr>
+</tbody></table>
+<p>为什么要单独优待这两个？你可以这么理解：<strong>这两个位置是误差最容易串到后续层去的关口</strong>，就像水管总阀，这里漏一点，后面全楼层水压都不对。把精度预算花在这里，性价比最高。</p>
+<p>对照数据，Q4_K_S 是 0.2689，Q4_K_M 是 0.1754，<strong>多花一点点体积，误差降了三分之一</strong>。这就是为什么大家默认推荐 <code>_M</code> 而不是 <code>_S</code>。</p>
+<h2>IQ 那一支：读重要性矩阵才算得出来</h2>
+<p>IQ 开头的（IQ1 到 IQ4）是另一条思路。它在量化之前会先跑一批数据，统计出<strong>每个权重对输出的实际影响有多大</strong>，生成一份重要性矩阵（imatrix 文件），然后按重要性分配 bits。</p>
+<p>K-quant 是事后按张量类型一刀切地分档，IQ 系的重要性矩阵则是<strong>事先算出来的</strong>。</p>
+<p>它的收益场景集中在极低比特。看那张 KLD 表，IQ4_XS 是 0.0088，落在 Q4_K_M 和 Q4_K_S 之间，<strong>在同样的压缩率下，IQ 系通常打得过朴素的同比特 K-quant</strong>。</p>
+<p>代价有两个，得说清楚。</p>
+<ul>
+<li><strong>你要能拿到或者自己做 imatrix</strong>，社区量化版本不都附带；</li>
+<li><strong>这份矩阵是用某批数据统计出来的</strong>，如果那批数据和你的业务领域差得远，重要性判断就会失真。这和下面 GPU 侧那个「校准集」的坑是同一件事。</li>
+</ul>
+<h2>GPU 那边是完全另一套玩法</h2>
+<p>上面讲的 GGUF 一家独大的世界，<strong>前提是我们说的是 CPU、Apple Silicon、或者中小显卡</strong>。一旦进了生产服务端，画风全变。</p>
+<p>服务端不追求「一个文件到处能跑」，它追求<strong>显存占用 × 单卡吞吐 × 质量</strong>三者怎么配。于是格式不再是容器之争，而是算法之争。</p>
+<h3>AWQ 和 GPTQ，吵了很多年的那两家</h3>
+<p>两者都是<strong>只量化权重，保留较高精度的激活</strong>（所谓 W4A16），分歧在于怎么决定「谁该保留精度」。</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>GPTQ</th>
+<th>AWQ</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>判断依据</td>
+<td>二阶的 Hessian 信息，求解最优重建误差</td>
+<td>看激活值的大小，判定哪些通道关键</td>
+</tr>
+<tr>
+<td>量化耗时</td>
+<td>慢，大模型数小时量级</td>
+<td>快，分钟量级</td>
+</tr>
+<tr>
+<td>对校准集的敏感程度</td>
+<td><strong>很敏感</strong></td>
+<td>比较钝感</td>
+</tr>
+<tr>
+<td>分布漂移时</td>
+<td>容易掉得更多</td>
+<td>掉得比较平缓</td>
+</tr>
+<tr>
+<td>什么时候赢</td>
+<td>校准集和你的业务是同一分布</td>
+<td>输入什么都会来、跨领域、没法精准对齐</td>
+</tr>
+</tbody></table>
+<p>这个表最值得记住的是最后两行，它决定了你该怎么选。有一份社区教学材料的说法很到位：<strong>你的部署目标开放就选 AWQ，只有当你为某个垂域老老实实攒了几千条对齐语料，GPTQ 才可能在那个领域反超一点。</strong></p>
+<blockquote>
+<p><strong>关于校准集的一句重话</strong>：有研究直接在多语言场景里验证了这件事，纯英文校准集量化出来的模型，在非英语任务上留下明显的精度缺口，换成多语言混合校准，<strong>困惑度最多能降 3.52</strong>。校准集不是走个过场，它是这个算法的输入参数之一。</p>
+</blockquote>
+<h3>FP8 / NVFP4 / MXFP4 是硬件原生的另一半</h3>
+<p>这一族不靠「猜哪些权重重要」，它们直接把浮点数本身变短，<strong>由张量核心硬件原生支持</strong>。</p>
+<table>
+<thead>
+<tr>
+<th>格式</th>
+<th>结构</th>
+<th>需要什么硬件</th>
+<th>大致质量损失</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FP8 (E4M3)</td>
+<td>8 bit 浮点</td>
+<td>Hopper 及以后、Ada、Blackwell</td>
+<td>通常 0.5% 以内，工程上常视为无损</td>
+</tr>
+<tr>
+<td>MXFP4</td>
+<td>4 bit 值 + 每 32 个共享一个 scale</td>
+<td>Blackwell、部分其他加速器</td>
+<td>据公开资料约 1% 量级</td>
+</tr>
+<tr>
+<td>NVFP4</td>
+<td>4 bit 值 + 每 16 个共享一个 FP8 scale + 每 tensor 一个 FP32 scale</td>
+<td><strong>仅 Blackwell</strong></td>
+<td>厂商公布的典型数据不到 1%</td>
+</tr>
+</tbody></table>
+<p>NVFP4 那个「两级缩放」值得单拎出来说。它不是一个孤立的 4 bit 数，而是<strong>每 16 个值配一个局部的放大系数，整个张量再配一个全局系数</strong>。正因为多了这一层局部缩放，块大小取 16 的 NVFP4 才比取 32 的 MXFP4 更能顶住同样的精度压力。</p>
+<p>按公开整理的格式质量排序，4 bit 这一档大致是这样一条链条。</p>
+<pre><code class="language-text hljs">硬件原生 FP4  &gt;  AWQ ≈ GPTQ ≈ EXL2  &gt;  GGUF Q4_K_M  &gt;  NF4  &gt;  朴素 INT4
+</code></pre>
+<p>NF4（QLoRA 用的那个）排在后面不是因为它笨，是因为它是一张<strong>查表</strong>，硬件没有对应的乘法单元，推理时每个值都要先还原成 16 bit 才能算，适合训练那类访存密集的活，不适合推理。</p>
+<h2>最大的那道选择题：大模型低精度，还是小模型高精度？</h2>
+<p>讲了这么多，落地其实就是这一句话。</p>
+<p>同一张 24GB 卡，你有两种花法。一种是 <strong>27B 配 Q4_K_M</strong>，约 15 GiB；另一种是 <strong>9B 配 Q8_0</strong>，约 9 GiB，还能塞 FP16。</p>
+<p>这里有个能省很多弯路的心智模型。</p>
+<table>
+<thead>
+<tr>
+<th>你追求的东西</th>
+<th>该往哪边押</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>知识广度、复杂推理、难题拆解</td>
+<td><strong>大模型 + 低精度</strong></td>
+<td>参数量带来的能力上限，掉一点量化损失补不回来</td>
+</tr>
+<tr>
+<td>稳定输出、垂域精度、严格格式</td>
+<td><strong>小模型 + 高精度</strong></td>
+<td>少了输出格式的抖动，比多出来的参数有用</td>
+</tr>
+<tr>
+<td>数学、代码、医疗、法律抽取</td>
+<td><strong>小模型 + 高精度</strong></td>
+<td>这几样对「分布被压扁」最敏感</td>
+</tr>
+<tr>
+<td>受 query 分布不可控的开放服务</td>
+<td><strong>优先保精度</strong>，或选 AWQ 系</td>
+<td>OOD 输入会把低精度的短板放大</td>
+</tr>
+</tbody></table>
+<p>社区里有一条流传很广的经验线，可以拿来当起手：<strong>同一个 7B 模型从 Q8_0 降到 Q4_K_M，你能感觉到差别但能忍；掉到 Q3 以下，它会明显变笨。</strong></p>
+<p>这条线和我们开头那张断崖表是对得上的。<strong>Q4 在下坡，Q3 是悬崖边。</strong></p>
+<p>另有一个常被忽略的砝码，是<strong>本机推理其实不是被算力限制的</strong>。单用户、batch 为 1 的生成过程，瓶颈在<strong>显存带宽</strong>这条路上而不在数学运算，卡的算力常常闲着。这就是为什么「把权重压小」在单机场景下是最大的一根延迟杠杆，压小它比换更强的核划算。</p>
+<blockquote>
+<p>由此派生出一句口口相传的口诀：<strong>要吞吐上 W8A8，要低延迟和小显存上 W4A16。</strong></p>
+</blockquote>
+<h2>三步自测，别信任何人给的数字</h2>
+<p>这是本篇最该带走执行的一段。<strong>两套独立的公开数据都摆在前面了，它们也只是「大致方向」，你的任务上一样要自己过一遍。</strong></p>
+<p><strong>第一步，测困惑度（十分钟内能出结果）。</strong></p>
+<pre><code class="language-bash hljs">llama-perplexity -m your-model-Q4_K_M.gguf -f wikitext-2-raw/wiki.test.raw -ngl 99
+llama-perplexity -m your-model-Q8_0.gguf    -f wikitext-2-raw/wiki.test.raw -ngl 99
+</code></pre>
+<p>注意，<strong>只在同一个工具、同一份数据下横向比</strong>。不要拿自己跑出来的数字去和网上贴的数字比，工具版本和随机种子都能让它差出一点。</p>
+<p><strong>第二步，跑你自己的题集。</strong> 困惑度阶段过了，才做这一步。攒 <strong>50 到 100 条真实业务题</strong>，带上标准答案或可判定的检查点。</p>
+<pre><code class="language-text hljs">- 分类抽取任务：直接算准确率，掉了 2 个百分点以上就要警惕
+- 生成任务：用另一个模型做打分裁判，或者写死几个必须命中的事实点做关键字检查
+- 格式敏感任务：直接写正则校验 JSON 能不能过，这一步比什么都实在
+</code></pre>
+<p><strong>第三步，盯长尾。</strong> 挑十条例外样本，罕见事实、超长输入、少数民族语言、错别字堆在一起的脏数据。<strong>平均分会骗人，长尾不会。</strong> 很多「量化后崩了」的报告，源头都在这一步没做。</p>
+<p>三步都过了，这个量化版本才配拿到同事面前去。</p>
+<h2>炼丹小结</h2>
+<ol>
+<li>两组独立实测（困惑度增量与 KLD 中位数）给出了同一个排序，<strong>可信度很高</strong>；</li>
+<li>损失的分布在 4 bit 和 3 bit 之间有一道<strong>断崖</strong>，Q5 以上彼此差别极小，Q3 以下跨数量级崩塌；</li>
+<li><strong>perplexity 是平均指标，KLD 才看得见分布被压扁</strong>。闲聊可以信前者，代码/数学/多语言必须看任务指标；</li>
+<li>K-quant 的核心是混精度，<code>_M</code> 给 <code>attention.wv</code> 和 <code>feed_forward.w2</code> 开小灶，<strong>性价比最高的就是这个后缀</strong>；</li>
+<li>IQ 系靠重要性矩阵，<strong>在极低比特下才明显占优</strong>，并且这份矩阵本身有领域偏差；</li>
+<li>GPU 侧是另一套玩法。<strong>输入分布不可控选 AWQ，能攒出对齐语料的垂域才轮到 GPTQ</strong>；</li>
+<li>FP8 是 2026 年生产环境的默认答案，NVFP4 的两级缩放让它喘过了剧降那关，但<strong>只认 Blackwell</strong>；</li>
+<li>大模型低精度换能力上限，小模型高精度换稳定与垂域精度，<strong>数学代码医疗一律偏向后者</strong>；</li>
+<li>单机推理卡在<strong>显存带宽</strong>上，所以压权重是最大的那根延迟杠杆；</li>
+<li>最后落到 Dockerfile 里之前，务必走完<strong>困惑度 → 自有题集 → 长尾样本</strong>三步。</li>
+</ol>
+<p>量化不是把模型变小，是把模型的某一部分删掉然后祈祷它不重要。<strong>那三步自测，就是帮你确认祈祷有没有被听见。</strong></p>
+<p>下一篇《Ollama 从玩具到服务》，我们把视角从单台机器挪到团队共用。同一套 11434 端口，从「自己聊两句」到「能交给同事用」之间，隔着五个环境变量和一个默认五分钟的陷阱。</p>
+<p>丹成不必在我，火候自有记录。</p>
+<hr>
+<p><em>附注：困惑度增量数据来自 llama.cpp 的 <code>llama-quantize</code> 工具自报输出（基准 Llama-3-8B）；KLD 中位数来自社区独立测量 Artefact2（基准 Mistral-7B）。两者模型与测法不同，排序一致但绝对值不可互换。K-quant 后缀语义来自 llama.cpp 的实现说明。FP8 / MXFP4 / NVFP4 的位宽、缩放结构与典型损失为公开技术资料与厂商公布数据的整理汇总，不同模型与实现版本之间差异较大，请以你自己的实测结果为准。</em></p>
+</div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/29/">显存这道算术题：买卡之前必须算的三笔账</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/31/">Ollama 从玩具到服务：交出 11434 端口之前的七件事</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/32/">引擎选型与并发压测：同一个模型换个框架，吞吐差一个数量级</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/30">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</body>
+</html>

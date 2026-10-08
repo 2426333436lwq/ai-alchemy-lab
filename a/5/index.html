@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>炸炉实录：Agent 上线三个月，我们炸过的六次炉 · AI 炼丹房</title>
+<meta name="description" content="工具输出塞满窗口、工具描述只写一句话、压缩把决策压没了、还没埋点就拆多智能体、级联路由判错题、微调后输出同质化——六个坑的症状、我们的误判、真实原因和解法。">
+<meta name="keywords" content="炸炉实录,Agent,踩坑,上下文工程">
+<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/5/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="炸炉实录：Agent 上线三个月，我们炸过的六次炉 · AI 炼丹房">
+<meta property="og:description" content="工具输出塞满窗口、工具描述只写一句话、压缩把决策压没了、还没埋点就拆多智能体、级联路由判错题、微调后输出同质化——六个坑的症状、我们的误判、真实原因和解法。">
+<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/5/">
+<meta property="og:site_name" content="AI 炼丹房">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="炸炉实录：Agent 上线三个月，我们炸过的六次炉 · AI 炼丹房">
+<meta name="twitter:description" content="工具输出塞满窗口、工具描述只写一句话、压缩把决策压没了、还没埋点就拆多智能体、级联路由判错题、微调后输出同质化——六个坑的症状、我们的误判、真实原因和解法。">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"炸炉实录：Agent 上线三个月，我们炸过的六次炉 · AI 炼丹房","description":"工具输出塞满窗口、工具描述只写一句话、压缩把决策压没了、还没埋点就拆多智能体、级联路由判错题、微调后输出同质化——六个坑的症状、我们的误判、真实原因和解法。","datePublished":"2026-09-27T16:17:00+08:00","dateModified":"2026-09-27T16:17:00+08:00","keywords":"炸炉实录,Agent,踩坑,上下文工程","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/5/"}}</script>
+<style>
+body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
+</head>
+<body>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/5">进入完整站点</a></div></div>
+<div class="snap-wrap"><h1 class="snap-title">炸炉实录：Agent 上线三个月，我们炸过的六次炉</h1><div class="snap-meta"><span>2026 年 9 月 27 日</span><span>约 7 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E7%82%B8%E7%82%89%E5%AE%9E%E5%BD%95">炸炉实录</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/Agent">Agent</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E8%B8%A9%E5%9D%91">踩坑</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E4%B8%8A%E4%B8%8B%E6%96%87%E5%B7%A5%E7%A8%8B">上下文工程</a></span></div><div class="article-body"><p>Agent 上线三个月，我们炸了六次炉。</p>
+<p>每一次都以为「是模型不行」，每一次最后都发现是<strong>我们自己的工程问题</strong>。按代价从高到低排，全都是真金白银换来的。</p>
+<h2>一号炉：工具返回塞满窗口，模型开始「失忆」</h2>
+<p><strong>症状</strong>：前几轮很聪明，跑到第 15 轮开始反复问已经知道的事，最后把一个早就被否掉的方案又提了一遍。</p>
+<p><strong>我们的误判</strong>：「这模型长上下文不行，换个窗口更大的。」</p>
+<p><strong>真实原因</strong>：我们的检索工具每次返回一大段原始文档，几十轮下来窗口里堆了几万 token 的工具输出，<strong>噪声把指令淹没了</strong>。模型不是失忆，是被埋了。</p>
+<p><strong>解法</strong>：</p>
+<ol>
+<li>工具返回做<strong>裁剪</strong>，只回结构化字段，不回原文；</li>
+<li>原始内容<strong>落盘</strong>，工具只回「路径 + 关键片段」；</li>
+<li>给工具结果设<strong>独立预算</strong>，超限就截断并标注「（已截断，完整内容见 xxx）」。</li>
+</ol>
+<blockquote>
+<p><strong>教训</strong>：模型看得见的东西，就是你给它的全部世界。往这个世界里倒垃圾，它就会变成垃圾处理厂。</p>
+</blockquote>
+<h2>二号炉：工具描述写了一句话，模型开始编参数</h2>
+<p><strong>症状</strong>：模型频繁用错误的参数调工具，尤其爱自己编造 ID。</p>
+<p><strong>我们的误判</strong>：「函数调用能力不行，多给几个示例吧。」</p>
+<p><strong>真实原因</strong>：我们的工具描述长这样——</p>
+<pre><code class="language-json hljs">{ &quot;name&quot;: &quot;search_database&quot;, &quot;description&quot;: &quot;Searches the database.&quot; }
+</code></pre>
+<p>一句话。模型除了「这是个查库的」，<strong>什么都不知道</strong>：什么时候该调、不能干什么、失败了怎么办。于是它猜，猜错了就是幻觉。</p>
+<p><strong>解法</strong>：把工具描述写成<strong>契约</strong>：</p>
+<pre><code class="language-json hljs">{ &quot;name&quot;: &quot;search_database&quot;,
+  &quot;description&quot;: &quot;根据精确的 email 或 user_id 查询客户记录。\n在建议任何账户变更之前必须先调用，严禁猜测 user_id。\n最多返回 10 条，需要更多请缩小范围。\nemail 格式非法会失败，请先校验。&quot; }
+</code></pre>
+<p>改完之后，同类错误掉了大半。</p>
+<blockquote>
+<p><strong>教训</strong>：<strong>工具描述就是提示词</strong>（第一层的配方原则在这里一样适用）。花十分钟重写描述，省十小时 debug。</p>
+</blockquote>
+<h2>三号炉：把 RAG 的 top-5 塞进系统提示</h2>
+<p><strong>症状</strong>：每一轮都很贵，P95 延迟居高不下，而大多数轮次<strong>根本没用到</strong>检索内容。</p>
+<p><strong>我们的误判</strong>：「检索成本高是正常的。」</p>
+<p><strong>真实原因</strong>：我们用的是<strong>提示级 RAG</strong>——会话开始就把 top-5 文档塞进系统提示，于是<strong>每一轮都要为这 8000 个 token 付费</strong>，哪怕这一轮只是在说「好的，继续」。</p>
+<p><strong>解法</strong>：改成<strong>工具级按需检索</strong>——给 Agent 一个 <code>search_docs</code> 工具，让它自己决定什么时候查。</p>
+<table>
+<thead>
+<tr>
+<th>方式</th>
+<th>第 1 轮</th>
+<th>第 10 轮</th>
+<th>相关性</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>提示级 RAG</td>
+<td>8,000</td>
+<td>8,000</td>
+<td>靠猜</td>
+</tr>
+<tr>
+<td>工具级 RAG</td>
+<td>500</td>
+<td>500（用到时 +1,200）</td>
+<td>精准</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>教训</strong>：预估需求是昂贵的，按需取用是便宜的。操作系统里叫虚拟内存，Agent 里叫 just-in-time context。</p>
+</blockquote>
+<h2>四号炉：压缩时一视同仁，把决策压没了</h2>
+<p><strong>症状</strong>：压缩之后 Agent 开始重复做已经做完的事，或者复活一个早就被否掉的方案。</p>
+<p><strong>我们的误判</strong>：「压缩会丢信息，那就少压一点。」</p>
+<p><strong>真实原因</strong>：我们的压缩是<strong>无差别摘要</strong>——把旧轮次整段丢给模型「总结一下」。而模型总结时会优先保留<strong>叙事连贯的内容</strong>（就是那些冗长的工具输出流水账），反而把<strong>决策、约束、未解决的错误</strong>压掉了。</p>
+<p><strong>解法</strong>：压缩必须<strong>带焦点</strong>——</p>
+<pre><code class="language-python hljs">summary = summarize(older, focus=[
+    &quot;decisions made&quot;,            # 做了什么决定
+    &quot;files modified&quot;,            # 改了哪些文件
+    &quot;open questions&quot;,            # 还没解决什么
+    &quot;tools that failed and why&quot;  # 失败过什么、为什么
+])
+</code></pre>
+<p><strong>保留决策与错误（高信号），丢弃工具流水账（低信号）</strong>，最近几轮保留原文。</p>
+<blockquote>
+<p><strong>教训</strong>：压缩不是「少写点」，是「<strong>决定什么值得一个 token</strong>」。这才是上下文工程的核心手艺。</p>
+</blockquote>
+<h2>五号炉：还没埋点就拆了多智能体</h2>
+<p><strong>症状</strong>：拆完子 agent，效果没变好，成本翻倍，还多了两类新 bug：子 agent 结论冲突、汇总时丢信息。</p>
+<p><strong>我们的误判</strong>：「任务太复杂，一个 Agent 扛不住，拆。」</p>
+<p><strong>真实原因</strong>：我们<strong>根本没测过</strong>上下文里到底装了什么。真正的瓶颈是没压缩、没按需检索——这些便宜得多的问题没解决，直接上了最贵的一招。</p>
+<p><strong>解法</strong>：退回来按顺序做——</p>
+<pre><code class="language-text hljs">1. 先埋点：每轮进了什么？每块多大？缓存命中率多少？
+          ↓
+2. 再压缩 + 按需选择   ← 便宜且见效快
+          ↓
+3. 最后才隔离（拆多智能体）
+</code></pre>
+<blockquote>
+<p><strong>教训</strong>：隔离有收益，但它最贵，而且会<strong>掩盖真正的问题</strong>。没仪表盘就改架构，等于没测体温就开刀。</p>
+<p>另外也有相反的经验：如果子任务之间<strong>必须共享历史</strong>，强行拆分反而会因为「隐式决策不一致」而变差。<strong>要不要拆，取决于上下文能不能真的独立，而不是任务看上去复不复杂。</strong></p>
+</blockquote>
+<h2>六号炉：微调之后，输出同质化得厉害</h2>
+<p><strong>症状</strong>：在需要创意的场景（文案、头脑风暴），微调后的模型输出<strong>一模一样</strong>——同一个结构、同一批词，采样 16 条几乎分不出差别。</p>
+<p><strong>我们的误判</strong>：「temperature 调高一点就好了。」（没用，采样分布本身已经坍缩了）</p>
+<p><strong>真实原因</strong>：<strong>熵坍塌</strong>。RL 训练过程中策略分布的熵持续下降，概率全压到少数几条「最安全」的路径上。单纯把温度拉高会引入胡说，所以粗暴调 temperature 只会让它胡说八道。</p>
+<p><strong>解法</strong>：</p>
+<ol>
+<li><strong>训练侧</strong>：关注「只在熵骤降处精细干预」的思路，以及<strong>强制在犹豫处探索</strong>的方法；</li>
+<li><strong>数据侧</strong>：检查是不是简单题太多——全是简单题，模型没有探索动机；</li>
+<li><strong>工程侧</strong>：<strong>创意场景和严谨场景分开部署</strong>。别指望一个「推理很强」的模型同时很会写文案，这不是同一个火候。</li>
+</ol>
+<blockquote>
+<p><strong>教训</strong>：训练会让它更确定，但「更确定」不等于「更强」。<strong>pass@1 涨了而 pass@256 跌了，那是变窄了，不是变强了。</strong></p>
+</blockquote>
+<h2>附：开炉前的自检清单</h2>
+<p>把这六次炸炉反过来，就是 checklist：</p>
+<ul>
+<li><input disabled="" type="checkbox"> 工具返回有没有裁剪？原始内容是否落盘而非入窗？</li>
+<li><input disabled="" type="checkbox"> 工具描述写成了<strong>契约</strong>，还是一句标签？</li>
+<li><input disabled="" type="checkbox"> 检索是<strong>按需</strong>的，还是预加载后每轮交税？</li>
+<li><input disabled="" type="checkbox"> 压缩有没有 <code>focus</code>？<strong>决策和错误</strong>保住了吗？</li>
+<li><input disabled="" type="checkbox"> 上下文有没有<strong>埋点</strong>？还是直接上了多智能体？</li>
+<li><input disabled="" type="checkbox"> 微调后有没有同时看 <strong>pass@1 和 pass@256</strong>？创意场景有没有单独验证？</li>
+</ul>
+<h2>写在最后</h2>
+<p>这六次炸炉，没有一次是模型的问题，<strong>全是工程问题</strong>。而且它们有个共同点——<strong>都是「偷懒」的代价</strong>：</p>
+<ul>
+<li>不裁剪工具输出，是因为写摘要麻烦；</li>
+<li>不写清工具描述，是因为赶时间；</li>
+<li>不埋点，是因为想直接看效果。</li>
+</ul>
+<p>爬出坑的过程，往往比丹本身值钱。所以我把它们记下来。</p>
+<p>丹成不必在我，火候自有记录。</p>
+<hr>
+<p><em>附注：文中场景为工程实践总结，方法与术语参考上下文工程的公开实践（写/选/压/隔、上下文失效模式）与后训练中熵坍塌相关研究。具体数值随业务与框架而异。</em></p>
+</div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/10/">上下文工程：把注意力当预算来花</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/13/">RAG 入门：把闭卷考试改成开卷考试</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/11/">工具调用与 Agent：给模型装一双手</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/5">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</body>
+</html>

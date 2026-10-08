@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据怎么不出门：内网的那道门，该堵在哪 · AI 炼丹房</title>
+<meta name="description" content="「模型已经跑在内网了，所以数据是安全的」这句话至少有五个漏洞。用「一个随身带五件东西的新员工」讲清权重下载、遥测上报、日志留存、工具调用、服务暴露这五条通道，附一份可离线摆渡的操作流程和国产卡的现实路径。">
+<meta name="keywords" content="炼丹笔记,本地部署,内网隔离,合规">
+<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/33/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="数据怎么不出门：内网的那道门，该堵在哪 · AI 炼丹房">
+<meta property="og:description" content="「模型已经跑在内网了，所以数据是安全的」这句话至少有五个漏洞。用「一个随身带五件东西的新员工」讲清权重下载、遥测上报、日志留存、工具调用、服务暴露这五条通道，附一份可离线摆渡的操作流程和国产卡的现实路径。">
+<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/33/">
+<meta property="og:site_name" content="AI 炼丹房">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="数据怎么不出门：内网的那道门，该堵在哪 · AI 炼丹房">
+<meta name="twitter:description" content="「模型已经跑在内网了，所以数据是安全的」这句话至少有五个漏洞。用「一个随身带五件东西的新员工」讲清权重下载、遥测上报、日志留存、工具调用、服务暴露这五条通道，附一份可离线摆渡的操作流程和国产卡的现实路径。">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"数据怎么不出门：内网的那道门，该堵在哪 · AI 炼丹房","description":"「模型已经跑在内网了，所以数据是安全的」这句话至少有五个漏洞。用「一个随身带五件东西的新员工」讲清权重下载、遥测上报、日志留存、工具调用、服务暴露这五条通道，附一份可离线摆渡的操作流程和国产卡的现实路径。","datePublished":"2026-09-27T16:26:25+08:00","dateModified":"2026-09-27T16:26:25+08:00","keywords":"炼丹笔记,本地部署,内网隔离,合规","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/33/"}}</script>
+<style>
+body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
+</head>
+<body>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/33">进入完整站点</a></div></div>
+<div class="snap-wrap"><h1 class="snap-title">数据怎么不出门：内网的那道门，该堵在哪</h1><div class="snap-meta"><span>2026 年 9 月 27 日</span><span>约 10 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E7%82%BC%E4%B8%B9%E7%AC%94%E8%AE%B0">炼丹笔记</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E6%9C%AC%E5%9C%B0%E9%83%A8%E7%BD%B2">本地部署</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%86%85%E7%BD%91%E9%9A%94%E7%A6%BB">内网隔离</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%90%88%E8%A7%84">合规</a></span></div><div class="article-body"><p>这是我们这个系列的收尾。前面四篇都在讲「怎么把它跑起来」，这一篇讲一件经常被跳过、但决定了前面所有工作有没有意义的事。</p>
+<p><strong>把模型搬到内网，不等于数据就不出门了。</strong></p>
+<p>这不是吓唬人。让我们把这句话拆开，看看它到底漏掉了什么。</p>
+<h2>一个比喻：搬进无窗办公室的新同事</h2>
+<p>想象你新招了一位同事，工位设在<strong>一间没有窗户的会议室</strong>里，所有敏感材料都摆在里面，门是关着的。</p>
+<p>听起来很安全。但这位同事随身带了五样东西。</p>
+<ul>
+<li><strong>一个已经装满文件的行李箱</strong>（他自己帶进来的东西从哪来的）；</li>
+<li><strong>一部开着的手机</strong>（会自己往外面发消息）；</li>
+<li><strong>一本随手记的工作笔记</strong>（记完之后放哪了）；</li>
+<li><strong>一双能伸到窗外的手</strong>（这屋子锁不住他主动往外递东西）；</li>
+<li><strong>以及一张写着他自己名字的门卡</strong>（谁能推门进来找他）。</li>
+</ul>
+<p>你说「会议室已经封闭了」，没错。<strong>但这五样东西，每一样都是一条通向外面世界的路。</strong></p>
+<p>一台内网部署的推理服务器，处境和这位同事一模一样。下面逐个来讲。</p>
+<h2>漏洞一：那几百 GB 权重，本身就是从外面进来的</h2>
+<p>这是最基础、也最常被忘掉的一条：<strong>你的模型是下载来的。</strong></p>
+<p>一个 Q4 量化的大家伙动辄几十上百 GB，它是从境外的公开模型平台一路下载下来的。这意味着<strong>在你宣布「内网已隔离」之前，这台机器已经和外网通了一次气</strong>，而且是最大的一次。</p>
+<p>三种常见的处理方式，按隔离强度排。</p>
+<table>
+<thead>
+<tr>
+<th>做法</th>
+<th>怎么做</th>
+<th>适合什么场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>直接拉</strong></td>
+<td>生产机直接连外网镜像站</td>
+<td>只要求「业务数据不出门」，不要求「机器不联网」</td>
+</tr>
+<tr>
+<td><strong>DMZ 摆渡</strong></td>
+<td>一台边界机下载 + 校验，离线介质倒进内网</td>
+<td><strong>多数合规场景的答案</strong></td>
+</tr>
+<tr>
+<td><strong>镜像同步</strong></td>
+<td>内网搭一套私有镜像，定时单向同步</td>
+<td>既要持续更新又要控源头</td>
+</tr>
+</tbody></table>
+<p>要注意的是，<strong>「开源可以自由获取」和「可以商用」是两件不同的事</strong>。前面选型那一层反复提过 Apache-2.0（Qwen 系列）和 MIT（MiMo 等）这类明确允许商用的协议，但每个版本库的协议可能不一样，<strong>请打开仓库根的 LICENSE 文件亲自读一遍</strong>。这一步花三分钟，能省掉后面无穷多的麻烦。</p>
+<h3>摆渡需要一个能自洽的流程</h3>
+<p>单文件 GGUF 在这种场景里格外顺手：<strong>权重、分词器、对话模板全在一个文件里</strong>，倒完介质不用再回头补拉第二趟。</p>
+<pre><code class="language-bash hljs"># 边界机上：下载并算摘要
+ollama pull qwen3.5:27b-instruct-q4_K_M
+find ~/.ollama/models -type f -exec sha256sum {} \; &gt; manifest.sha256
+
+# 内网机上：导入后再算一遍，逐条比对
+diff &lt;(sort manifest.sha256) &lt;(find /srv/models -type f -exec sha256sum {} \; | sort)
+</code></pre>
+<p><strong>两遍摘要必须一致，这是整个摆渡流程的信用来源。</strong> 不要凭「看着都在」就宣布完成。</p>
+<h2>漏洞二：它自己会往外发消息</h2>
+<p>这是最容易被忽略的一条，因为<strong>它通常打着「帮你保持最新」的旗号</strong>。</p>
+<p>几条实际的通道，按隐蔽程度排。</p>
+<table>
+<thead>
+<tr>
+<th>通道</th>
+<th>它在干什么</th>
+<th>怎么处理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>桌面客户端自动更新</td>
+<td>定期检查新版本并提示升级</td>
+<td>显式关闭，或改成手动审批</td>
+</tr>
+<tr>
+<td>Python 包管理器的解析</td>
+<td>装依赖时会去外部索引确认版本</td>
+<td>指向内部私有源</td>
+</tr>
+<tr>
+<td>容器镜像构建</td>
+<td>构建过程一路拉外网镜像</td>
+<td>用内部镜像仓库，构建时不给外网</td>
+</tr>
+<tr>
+<td>显卡驱动与厂商工具</td>
+<td>部分组件带使用情况上报</td>
+<td><strong>自查厂商文档</strong>，按条款关闭</td>
+</tr>
+</tbody></table>
+<p>这里有一条通用的工程原则：<strong>把「自动」改成「显式」。</strong> 任何会自己联网的功能，要么关掉，要么改成由人审批后手动触发。内网机器上的自动更新不是一个便利性功能，它是一条对外通道。</p>
+<p>顺带一提，第三篇强调过「升级前先看变更清单」，放在这里就更有意义了：<strong>离线环境里升级是件昂贵的事，所以更应该把版本锁死，把变更审仔细。</strong></p>
+<h2>漏洞三：你的日志里写着用户说了什么</h2>
+<p>这是最让安全同学血压升高的一条，因为它不但存在，而且是<strong>默认开启</strong>的。</p>
+<p>试着想象这样一个配置。你为了排查问题把日志级别开到了 DEBUG，然后在反向代理那边开了完整的请求记录。</p>
+<pre><code class="language-text hljs">POST /v1/chat/completions
+{&quot;messages&quot;:[{&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:&quot;财务部张三月薪多少...&quot;}]}
+</code></pre>
+<p><strong>全文都在。</strong></p>
+<p>再加上几条常见叠加：应用层的错误收集 SDK 会把上下文一起报给外部服务；调试用的对话回放功能会落盘不清理；请求体写进了某台集中日志机器，而那台机器不在你的内网边界内。</p>
+<p>四条能立刻执行的动作。</p>
+<pre><code class="language-text hljs">1. 日志级别默认 INFO，DEBUG 只在排障窗口临时开
+2. 反向代理的请求日志不记录 body
+3. 错误上报 SDK 配成脱敏，或直接换成内网的同类方案
+4. 落盘的对话数据设定生命周期，到期自动清
+</code></pre>
+<blockquote>
+<p><strong>一个能立刻用的排查命令</strong>：到日志目录里搜一遍你自己的一个测试提问。<strong>搜得到，就说明这条路是通的。</strong></p>
+</blockquote>
+<h2>漏洞四：模型有一双能伸到窗外的手</h2>
+<p>这一条是 2026 年最需要拉警报的，因为它是<strong>Agent 时代独有的问题</strong>。</p>
+<p>前面几层我们讲过工具调用是怎么工作的：模型输出一段「我要调用某某函数」的结构化文本，执行框架接过去真的去调用，<strong>然后再把结果塞回上下文</strong>。</p>
+<p>于是会发生一件事，很多人没有提前想到。</p>
+<pre><code class="language-text hljs">你的内网模型  →  调用了联网搜索工具  →  资料发到了外部服务
+你的内网模型  →  调用了外部知识库 API  →  你的问题一起发出去了
+你的内网模型  →  连了一个远程 MCP 服务  →  上下文跟着请求走了
+</code></pre>
+<p><strong>模型本体在内网，它的手不在。</strong></p>
+<p>这条和其他几条的治理办法完全不一样，因为它不是一个配置项，是一整套运行时行为。三条硬建议。</p>
+<ul>
+<li><strong>出口白名单</strong>。跑模型的那台机器在防火墙上只允许访问内网段，<strong>默认 deny 所有出站</strong>。这是唯一可靠的做法，靠「别那么写」是拦不住的；</li>
+<li><strong>工具逐一备案</strong>。每接一个工具就登记一次「它会带着什么数据去哪」，没有通过备案的不许上线；</li>
+<li><strong>检索链路也要看</strong>。很多团队精心隔离了模型，却让 RAG 走了一个外部的向量检索服务，<strong>这等于把最敏感的那部分资料直接送出去了</strong>。</li>
+</ul>
+<h2>漏洞五：门其实是虚掩的</h2>
+<p>回到第三篇和第四篇反复提过的那个事实：<strong>这些引擎的原生接口都不带鉴权。</strong></p>
+<p>这意味着只要有人能在办公网里扫到那个端口，他就能用你的显卡跑他的任务、还能看到你加载了哪些模型。<strong>办公室里那位新盆栽同事的门卡就挂在门把手上。</strong></p>
+<p>按第四篇尾部那四个必装件做一遍就够了：<strong>鉴权、限流、监控、优雅重启</strong>，再补一条<strong>访问审计</strong>——谁在什么时候调了什么，要能查出来。</p>
+<h2>一份能打印出来贴墙的检查清单</h2>
+<p>把上面五条压成一页纸，交付前逐项打勾。</p>
+<pre><code class="language-text hljs">□ 权重来源可追溯，且保留了一份 SHA256 摘要
+□  LICENSE 文件已读过，商用条款明确允许
+□  边界机与内网机之间只有离线介质，没有隧道
+□  所有自动更新已关闭，依赖指向内部源
+□  日志级别为 INFO，反向代理不记录请求体
+□  错误上报已脱敏或已内部化
+□  落盘对话有生命周期，到期会自动清
+□  跑模型的机器出站默认为 deny
+□  已接入的工具全部登记「带什么数据去哪」
+□  RAG 链路的检索端也在内网
+□  服务端口有鉴权，且有访问审计
+□  抽样一条真实提问，在日志里搜不到它
+</code></pre>
+<p>最后那一行是我个人最喜欢的一条，因为它是一句话就能做完的验收：<strong>搜不到才算真的堵住了。</strong></p>
+<h2>顺带说一条国产卡的现实路径</h2>
+<p>做私有化的团队，最后多半会遇到一个绕不开的问题：<strong>卡从哪来。</strong></p>
+<p>国产 NPU 路线上，目前公开可用的方案之一是通过<strong>适配插件</strong>的形式接入主流引擎——把原本跑 CUDA 的那套算子换成对应平台的计算库，上层接口保持不变。按公开部署文档的描述，典型做法是这样。</p>
+<pre><code class="language-bash hljs"># 设备要先能认到
+npu-smi info
+
+# 用厂商提供的运行时把设备挂进容器
+docker run --device /dev/davinci0 --device /dev/davinci_manager \
+       --device /dev/devmm_svm --device /dev/hisi_hdc \
+       -v /usr/local/Ascend/driver:/usr/local/Ascend/driver:ro \
+       -v /srv/models:/models \
+       &lt;厂商提供的镜像&gt; \
+       vllm serve /models/&lt;模型&gt; --tensor-parallel-size 4
+</code></pre>
+<p>三个值得记住的要点。</p>
+<ul>
+<li><strong>镜像和设备都要从厂商官方渠道拿</strong>，版本号请以官方仓库为准（网上流传的镜像 tag 常常是某个候选版本）；</li>
+<li><strong>权重建议走境内的合规镜像源</strong>，下载稳定性和协议审查都更好处理；</li>
+<li><strong>上层接口仍然是 OpenAI 兼容的</strong>，这意味着你前面几篇写的业务代码基本不用改。</li>
+</ul>
+<blockquote>
+<p>详细的支持矩阵和已知限制请以厂商官方文档为准。这类适配层的版本对应关系变化很快，<strong>对着三个月前的教程做国产化部署，是这个领域里最常见的翻车方式之一。</strong></p>
+</blockquote>
+<h2>结语：这套东西到底值不值</h2>
+<p>走完这五篇，我们其实回答的是一个很朴素的问题：<strong>把模型搬到自己手里，值不值。</strong></p>
+<p>答案取决于你要什么。</p>
+<ul>
+<li><strong>要的是控制权。</strong> 硬件在手，版本自己定，不被别人的涨价通知左右，这一层私有化给得起；</li>
+<li><strong>要的是合规。</strong> 上面那张贴墙清单能走完，这条路就走得通；</li>
+<li><strong>如果唯一的目标是省钱</strong>，请先算清楚：这些进去之后能不能撑住。那一整篇的老实话说得很明白——规模不到之前，缓存和路由的收益远高于自己养卡，<strong>再加至少一位懂行的人值班</strong>。</li>
+</ul>
+<p>我们自己对这个系列的态度一贯是一致的：<strong>不吹本地部署万能，也不劝退。</strong> 这五篇里所有的数字都尽量给了出处，也反复建议您自己跑一遍验证，就是希望你在按下那个「开炉」按钮之前，手里的账是清晰的。</p>
+<h2>炼丹小结</h2>
+<ol>
+<li><strong>「模型在内网」不等于「数据安全」</strong>，至少还有五条向外通道；</li>
+<li><strong>权重本身是从外网进来的</strong>，要么接受这条事实，要么用 DMZ 摆渡 + 两次摘要比对；</li>
+<li><strong>开源不等于商用自由</strong>，仓库根的 LICENSE 文件值得花三分钟读；</li>
+<li>所有「自动」的东西都要改成显式：<strong>自动更新、依赖解析、镜像构建</strong>；</li>
+<li><strong>日志默认会记录完整请求</strong>，这是最容易被漏掉的一条，用「搜一条自己的提问」来验证；</li>
+<li><strong>模型有一双伸到窗外的手</strong>，工具调用、外部检索、远程 MCP 都算，拦它只能靠<strong>出站白名单</strong>；</li>
+<li><strong>原生接口都不带鉴权</strong>，鉴权、限流、监控、优雅重启、访问审计这五件一件都不能少；</li>
+<li>国产卡的路已经通了，走的是<strong>适配插件 + 厂商镜像 + 境内权重源</strong>，但版本对应关系请以官方文档为准；</li>
+<li>最后一问永远要先答：<strong>你要的是控制权、合规、还是省钱</strong>，三者对应的结论完全不同。</li>
+</ol>
+<p>把这个系列的五篇连起来看，其实是一条很清楚的线：<strong>算得出显存 → 选得对精度 → 配得起服务 → 挑得准引擎 → 堵得住那条向外走的路。</strong></p>
+<p>丹成不必在我，火候自有记录。</p>
+<hr>
+<p><em>附注：本文涉及的合规要求仅为工程视角的通用建议，不构成法律意见，具体义务请以相关法律法规与你所在机构的合规制度为准。国产 NPU 的部署命令与设备路径取自公开的部署文档与厂商资料，版本、镜像 tag 与支持矩阵请以官方仓库的当前说明为准。各类引擎的默认行为与开关选项随版本变化，请以 <code>ollama serve --help</code>、<code>vllm --help</code> 等命令的实际输出为准。</em></p>
+</div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/29/">显存这道算术题：买卡之前必须算的三笔账</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/30/">量化到底牺牲了什么：把精度换成显存的那笔交易</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/31/">Ollama 从玩具到服务：交出 11434 端口之前的七件事</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/33">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</body>
+</html>

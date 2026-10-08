@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 炼丹房</title>
+  <meta name="description" content="AI 炼丹房 —— 记录大模型时代的炼丹笔记：训练、微调、Prompt 工程与工具评测。">
+  <script>
+    /* 主题防闪烁：绘制前先恢复访客上次选择的主题 */
+    (function () {
+      try {
+        var t = localStorage.getItem('site-theme');
+        if (t && t !== 'ink') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) { /* 本地存储不可用时保持默认主题 */ }
+    })();
+  </script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23211d18'/%3E%3Cpath d='M16 5c2.4 3 4.5 5 4.5 7.7A4.5 4.5 0 0 1 16 17a4.5 4.5 0 0 1-4.5-4.3C11.5 10 13.6 8 16 5z' fill='%23e8b34b'/%3E%3Cpath d='M7.5 19h17l-1.4 5A5.5 5.5 0 0 1 17.8 28h-3.6a5.5 5.5 0 0 1-5.3-4l-1.4-5z' fill='%23e8b34b'/%3E%3C/svg%3E">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#211d18">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="AI 炼丹房">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" id="hljs-light" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+  <link rel="stylesheet" id="hljs-dark" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css" disabled>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <div id="read-progress" class="read-progress hidden"><i id="read-progress-bar"></i></div>
+  <header id="site-header">
+    <div class="header-inner">
+      <a class="brand" href="#/" aria-label="AI 炼丹房 首页">
+        <svg class="brand-icon" viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+          <path d="M16 3c2.1 2.6 4 4.5 4 6.9A4 4 0 0 1 16 13.7a4 4 0 0 1-4-3.8c0-2.4 1.9-4.3 4-6.9z" fill="currentColor"/>
+          <path d="M6.5 15.5h19l-1.5 7.2a6.5 6.5 0 0 1-6.4 5.3h-3.2a6.5 6.5 0 0 1-6.4-5.3l-1.5-7.2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+          <path d="M5 15.5h22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M11 28l-1.6 2.6M21 28l1.6 2.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span class="brand-text">AI 炼丹房</span>
+        <span class="brand-sub">ALCHEMY LAB</span>
+      </a>
+      <nav id="main-nav" aria-label="主导航">
+        <a href="#/" data-nav="/">文章</a>
+        <a href="#/tags" data-nav="/tags">标签</a>
+        <a href="#/series" data-nav="/series">系列</a>
+        <a href="#/about" data-nav="/about">关于</a>
+        <a href="#/admin" data-nav="/admin" id="nav-admin" class="hidden">管理</a>
+      </nav>
+      <div class="theme-wrap">
+        <button id="theme-btn" class="theme-btn" type="button" title="切换主题风格" aria-label="切换主题风格" aria-haspopup="true">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a9 9 0 1 0 0 18c1.4 0 1.8-.8 1.8-1.6 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.1 0-.9.7-1.6 1.7-1.6H17a4 4 0 0 0 4-4c0-4.4-4-7.5-9-7.5z"/>
+            <circle cx="7.5" cy="10.5" r="1.1" fill="currentColor" stroke="none"/>
+            <circle cx="12" cy="7.5" r="1.1" fill="currentColor" stroke="none"/>
+            <circle cx="16.5" cy="10.5" r="1.1" fill="currentColor" stroke="none"/>
+          </svg>
+        </button>
+        <div id="theme-panel" class="theme-panel hidden" role="menu" aria-label="主题选择"></div>
+      </div>
+      <div id="auth-area" class="auth-area"></div>
+    </div>
+  </header>
+
+  <main id="app" class="app-main">
+    <div class="page-loading">
+      <span class="flame-pulse"></span>
+      <p>炉火初燃，丹房开张中…</p>
+    </div>
+  </main>
+  <!-- SNAP:NAV:START -->
+<noscript>
+<div class="snap-index-nav">
+<h2>AI 炼丹房 · 全部文章</h2>
+<p>数据是药材 · 算力是炉火 · 调参是火候</p>
+<ul>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/4/">学习路线图：从「AI 是什么」到「自己炼一炉丹」</a> — 一条从零基础到能独立微调与部署的完整学习主线。四个主阶段，外加「选炉」「安炉」两条横向分支，共三十一篇笔记。每篇都标明难</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/1/">开炉大吉：为什么这个博客叫「AI 炼丹房」</a> — 把训练大模型比作炼丹：数据是药材，算力是炉火，调参是火候。这个博客记录一个炼丹学徒的日常。</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/17/">大模型其实在玩「猜下一个字」</a> — 别把它想成百科全书或搜索引擎——它本质上是一个超级成语接龙选手。理解了这一点，你就理解了它为什么会算错数学、为什么会编造</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/16/">Token 是什么：为什么它数不清 strawberry 里有几个 r</a> — 模型眼里的文字不是一个个字母或汉字，而是一块块「token」。搞懂这个，你就明白了三件事：为什么按 token 计费、为</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/2/">Prompt 工程入门：从「念咒」到「配方」</a> — 好的 Prompt 不是玄学咒语，而是可复用的配方：角色、上下文、任务、约束、输出格式，一味都不能少。</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/15/">幻觉：它为什么会一本正经地胡说八道</a> — 模型不是在说谎，它是在「接一段最像真话的话」。搞清楚幻觉的三种常见形态和四个可操作的防法，你就知道什么时候能信它、什么时</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/3/">本地跑一个 7B 模型：平民炼丹指南</a> — 没有 A100 也能炼丹：用 Ollama 在消费级设备上跑起 7B 模型，十分钟完成从安装到对话。</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/29/">显存这道算术题：买卡之前必须算的三笔账</a> — 同样一张 24GB 显卡，为什么有人跑 32B 跑得很欢，你拉个 7B 反而 OOM。用「买房三大件」讲清楚权重、KV </li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/30/">量化到底牺牲了什么：把精度换成显存的那笔交易</a> — Q4_K_M 的自报困惑度只涨了 0.17，Q3_K_M 却涨了 0.66，中间隔着一道断崖。用两组互相独立的实测数据定</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/31/">Ollama 从玩具到服务：交出 11434 端口之前的七件事</a> — 同一个模型在自己电脑上跑得挺好，搬到内网给同事用就开始变慢、忘事、掉线。问题几乎从不出现在模型上，而在几个环境变量和一个</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/32/">引擎选型与并发压测：同一个模型换个框架，吞吐差一个数量级</a> — 模型一行没改，卡一张没加，50 路并发下的差距能到四倍。用「家庭厨房与中央厨房」讲清 PagedAttention 和 </li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/33/">数据怎么不出门：内网的那道门，该堵在哪</a> — 「模型已经跑在内网了，所以数据是安全的」这句话至少有五个漏洞。用「一个随身带五件东西的新员工」讲清权重下载、遥测上报、日</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/14/">temperature 与 top_p：控制模型「胆子」的两个旋钮</a> — 同一个问题问十遍，答案时好时坏？不是模型不稳定，是这两个旋钮没调。用抽奖转盘的例子讲清楚它们是什么，附一张「什么任务该拧</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/13/">RAG 入门：把闭卷考试改成开卷考试</a> — 模型不知道你公司的制度、不知道上周的会议纪要、知识还停在训练截止那天。RAG 就是给它递一本参考书再让它答题——目前对付</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/12/">上下文窗口：模型的工作台有多大</a> — 厂商宣传的「100 万 token 上下文」不代表你能用满 100 万。用办公桌的比喻讲清楚窗口是什么、为什么聊久了它会</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/11/">工具调用与 Agent：给模型装一双手</a> — 模型不知道今天的天气、查不了你的数据库、发不了邮件——因为它只有一张嘴。工具调用就是给它接上手和眼睛，Agent 则是让</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/10/">上下文工程：把注意力当预算来花</a> — 2024 年我们写 Prompt，2026 年我们写「产出下一个上下文的程序」。写、选、压、隔四招，一份预算分配表，以及</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/18/">模型选型总纲：给每个工种请对师傅</a> — 「哪个模型最强」是个错问题。真正要问的是：这个活的能力下限在哪、一天要干多少遍、出错代价多大。本文给出一张 2026 年</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/19/">GPT 家族：菜单铺得最全，账单也最会骗人</a> — Astra、Sol、Luna、Ultrafast 到底各自干什么的？OpenAI 现在卖的不是「一个模型」，而是一张分工</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/20/">Claude 家族：记性最好，且长上下文不加价</a> — 三大前沿厂商里，只有 Anthropic 明确不给长上下文加价；Opus 5.5 的缓存读价甚至只有输入价的 5%。这篇</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/21/">Gemini 家族：自带图书馆的助手，账单上有三行小字</a> — Gemini 3.8 Flash 促销价低到 $0.75/$3.75，是所有前沿模型里最便宜的一档；原生多模态、自带搜索</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/22/">DeepSeek：把价格砍到地板，还搞了一套「峰谷电价」</a> — 闲时价格只有峰时的一半，缓存命中低到每百万 token 不到半美分，同时支持 OpenAI 和 Anthropic 两套</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/23/">通义千问 Qwen：货架最宽的那家铺子</a> — 别家是一家精品店，Qwen 是一家仓储超市：从闭源旗舰 Max 到开源可自拉的 35B 小 MoE，从文本到语音、视频、</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/24/">GLM 与智谱：从价格战里第一个涨价的那家</a> — 2026 年 2 月，在所有人都在降价的时候，GLM 把 API 价格提了 30%～83%。这件事比它便宜几毛钱有意思得</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/25/">其他玩家：Kimi、MiniMax、Grok 与一群偏科天才</a> — 他们不打全面战争，专挑一个项目练到极致：Kimi 的数学、MiniMax 的 1M 输出与极低单价、Grok Fast </li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/27/">小米 MiMo：把全模态卖成白菜价的那家</a> — 一家做手机的公司，开源了一个万亿参数的「原生全模态」模型：同一个模型直接吃文字、图片、视频、音频，MIT 许可，Pro </li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/9/">微调入门：通识教育之后，再上岗前培训</a> — 微调不是万能药，它只解决一类问题：让模型「习惯」某种行为。搞清什么时候该微调、什么时候该用 Prompt 或 RAG，能</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/8/">LoRA 是什么：不动丹体，只贴一张便利贴</a> — 全参数微调一个 7B 模型要几十 GB 显存，LoRA 让它降到一张消费级显卡就能跑。用「百科全书贴便利贴」的比喻讲清原</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/7/">后训练的六道火候：大模型是怎么「刷题」变强的</a> — 监督微调是照着答案抄，RLVR 是自己做题自己对答案。用「刷题」这个比喻讲透 2026 年让模型变强的主力方法，以及圈内</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/6/">推理炉具七层：同样的模型，为什么别人快十倍</a> — 不加卡也能把吞吐拉起来的七层优化。拼车、平装书、实习生起草老板审稿——三个比喻讲清连续批处理、量化和投机解码；以及真正的</li>
+<li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/5/">炸炉实录：Agent 上线三个月，我们炸过的六次炉</a> — 工具输出塞满窗口、工具描述只写一句话、压缩把决策压没了、还没埋点就拆多智能体、级联路由判错题、微调后输出同质化——六个坑</li>
+</ul>
+<p><a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">查看完整归档</a></p>
+</div>
+</noscript>
+<!-- SNAP:NAV:END -->
+
+  <footer id="site-footer">
+    <div class="footer-inner">
+      <p class="footer-brand"><span id="footer-brand">AI 炼丹房</span> · <span id="footer-note">丹成不必在我，火候自有记录</span></p>
+      <p class="footer-tech">文章数据存于云端数据库 · 图片与附件存于云端对象存储 · 支持邮箱登录与附件下载</p>
+    </div>
+  </footer>
+
+  <a id="admin-fab" class="admin-fab hidden" href="#/admin" title="进入后台管理系统">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+    <span>后台管理</span>
+  </a>
+
+  <div id="toast-root" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/util.js"></script>
+  <script src="assets/js/markdown.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/theme.js"></script>
+  <script src="assets/js/views.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/admin.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

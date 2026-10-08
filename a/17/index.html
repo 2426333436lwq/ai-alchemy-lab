@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大模型其实在玩「猜下一个字」 · AI 炼丹房</title>
+<meta name="description" content="别把它想成百科全书或搜索引擎——它本质上是一个超级成语接龙选手。理解了这一点，你就理解了它为什么会算错数学、为什么会编造事实、为什么你说话的方式会影响答案。">
+<meta name="keywords" content="原理,大模型,入门,教程">
+<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/17/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="大模型其实在玩「猜下一个字」 · AI 炼丹房">
+<meta property="og:description" content="别把它想成百科全书或搜索引擎——它本质上是一个超级成语接龙选手。理解了这一点，你就理解了它为什么会算错数学、为什么会编造事实、为什么你说话的方式会影响答案。">
+<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/17/">
+<meta property="og:site_name" content="AI 炼丹房">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="大模型其实在玩「猜下一个字」 · AI 炼丹房">
+<meta name="twitter:description" content="别把它想成百科全书或搜索引擎——它本质上是一个超级成语接龙选手。理解了这一点，你就理解了它为什么会算错数学、为什么会编造事实、为什么你说话的方式会影响答案。">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"大模型其实在玩「猜下一个字」 · AI 炼丹房","description":"别把它想成百科全书或搜索引擎——它本质上是一个超级成语接龙选手。理解了这一点，你就理解了它为什么会算错数学、为什么会编造事实、为什么你说话的方式会影响答案。","datePublished":"2026-09-27T16:29:00+08:00","dateModified":"2026-09-27T16:29:00+08:00","keywords":"原理,大模型,入门,教程","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/17/"}}</script>
+<style>
+body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
+</head>
+<body>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/17">进入完整站点</a></div></div>
+<div class="snap-wrap"><h1 class="snap-title">大模型其实在玩「猜下一个字」</h1><div class="snap-meta"><span>2026 年 9 月 27 日</span><span>约 4 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%8E%9F%E7%90%86">原理</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%A4%A7%E6%A8%A1%E5%9E%8B">大模型</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%85%A5%E9%97%A8">入门</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E6%95%99%E7%A8%8B">教程</a></span></div><div class="article-body"><p>很多人把大模型想象成一台「查找答案的机器」：你问，它去某个巨大的数据库里翻，翻到了就告诉你。</p>
+<p><strong>这个想象是错的。</strong> 理解它为什么错，是你学 AI 路上最重要的一步。</p>
+<h2>它其实在干什么：成语接龙</h2>
+<p>真相简单得有点离谱——模型只做一件事：</p>
+<blockquote>
+<p><strong>看着前面已经有的字，猜下一个字最可能是什么。</strong></p>
+</blockquote>
+<p>然后把猜出来的字接到后面，再猜下一个，再下一个，一个字一个字把整段话「接」出来。</p>
+<p>你每天都在用这个东西，只是没意识到：<strong>手机输入法的联想</strong>。</p>
+<table>
+<thead>
+<tr>
+<th>你输入的</th>
+<th>输入法联想</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>今天天气</td>
+<td>真好 / 不错 / 怎么样</td>
+</tr>
+<tr>
+<td>祝你生日</td>
+<td>快乐</td>
+</tr>
+<tr>
+<td>从前有座山，山里有座庙，庙里有</td>
+<td>个老和尚</td>
+</tr>
+</tbody></table>
+<p>大模型就是这么个东西，只不过它读过万亿级的文字，所以「接」得特别像那么回事。</p>
+<h2>亲眼验证一下</h2>
+<p>打开你本地的模型（见《本地跑一个 7B 模型》），试试这两组输入：</p>
+<p><strong>第一组——它背过的：</strong></p>
+<pre><code class="language-text hljs">请接下去：床前明月光，
+</code></pre>
+<p>它会接「疑是地上霜」。因为这句话在训练数据里出现过成千上万次，它记得「这句后面跟着什么」。</p>
+<p><strong>第二组——它没背过的：</strong></p>
+<pre><code class="language-text hljs">请介绍一下《深度学习导论（第三版）》这本书。
+</code></pre>
+<p>注意：<strong>这本书是我刚编的，不存在。</strong></p>
+<p>但你很可能会得到一段非常像样的回答：出版社、作者、章节结构、适合什么读者……全都一本正经。</p>
+<p>它没在查书，它在想：<strong>「一本书的介绍」这种文字，通常长什么样？</strong> 然后照着那个样子接了一段。</p>
+<h2>这个真相解释了三件你一定遇到过的事</h2>
+<h3>1. 为什么它会算错数学</h3>
+<p>因为它<strong>不是在算，是在接</strong>。</p>
+<p>问它 <code>1287 × 431</code>，它不是在列竖式，而是在猜「一串数字乘一串数字，答案通常长什么样」。猜得像 ≠ 算得对。</p>
+<p>所以你会看到它算简单乘法很准（因为这种题在网上到处都是，它「见过」），算复杂的心算就翻车。</p>
+<blockquote>
+<p><strong>实用结论</strong>：要算数，别让它直接算——让它写代码，你去执行。把「接话」变成「执行」，准确率天差地别。</p>
+</blockquote>
+<h3>2. 为什么你说话的方式会影响答案</h3>
+<p>因为它的每一步都取决于<strong>前面已经出现的字</strong>。</p>
+<p>同样的问题，前面多铺垫一句，后面接出来的东西就完全不同。这不是玄学，是它的工作方式决定的：</p>
+<pre><code class="language-text hljs">❌ 「这段代码有问题吗？」          → 它开始自由发挥
+✅ 「你是资深 Python 工程师。以下是处理订单的 ETL 脚本，
+    请只检查性能问题，按严重程度排序输出。」
+   → 它被「引导」到了完全不同的续写方向上
+</code></pre>
+<p>这就是为什么《Prompt 工程入门》说要把角色、背景、约束都写清楚——<strong>你是在给它设定「接下来该往哪个方向接」</strong>。</p>
+<h3>3. 为什么它会一本正经地胡说</h3>
+<p>因为它判断的标准是「<strong>像不像</strong>」，不是「<strong>对不对</strong>」。</p>
+<p>一个不存在但听起来很像的书名，配上很像的介绍文字——从「像不像」的角度打分，它能拿满分；从「对不对」的角度，它是零分。</p>
+<p>这就是<strong>幻觉</strong>，下一层我们会专门讲它怎么防。</p>
+<h2>那它为什么看起来那么聪明？</h2>
+<p>因为它读过的文字实在太多了。</p>
+<p>当它读过几千万篇数学题解，「接」出来的解题步骤就真的对；当它读过整个 GitHub，「接」出来的代码就真的能跑。</p>
+<p><strong>不是它懂，是它见得多，而且极其擅长模仿。</strong> 这两件事在简单任务上看起来一模一样，在复杂任务上就会分道扬镳——分道的地方，就是它翻车的地方。</p>
+<h2>记住这张对照表</h2>
+<p>| 你可能以为它是 | 它实际上是 |
+| --- | --- | --- |
+| 百科全书（查资料） | 成语接龙选手（接话） |
+| 计算器（算） | 模仿者（猜最像的答案） |
+| 数据库（存了事实） | 概率机器（什么搭配最常见） |
+| 有「知之为知之」的意识 | 没有，它默认必须接下去 |</p>
+<h2>炼丹小结</h2>
+<ol>
+<li>模型只做一件事：<strong>猜下一个字</strong>，然后一个字一个字接出整段话；</li>
+<li>它的判断标准是「像不像」，不是「对不对」——这解释了幻觉；</li>
+<li>它不在算，它在模仿——所以算术要让它写代码去执行；</li>
+<li>你的 Prompt 决定了它「接着往哪说」——所以怎么写很重要。</li>
+</ol>
+<p>理解了「猜下一个字」，后面所有的现象——幻觉、上下文遗忘、Prompt 技巧——都能从这一条推出来。</p>
+<p><strong>这一条，是整个系列的底座。</strong></p>
+<p>丹成不必在我，火候自有记录。</p>
+</div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/16/">Token 是什么：为什么它数不清 strawberry 里有几个 r</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/15/">幻觉：它为什么会一本正经地胡说八道</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/4/">学习路线图：从「AI 是什么」到「自己炼一炉丹」</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/17">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</body>
+</html>

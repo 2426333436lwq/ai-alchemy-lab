@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>引擎选型与并发压测：同一个模型换个框架，吞吐差一个数量级 · AI 炼丹房</title>
+<meta name="description" content="模型一行没改，卡一张没加，50 路并发下的差距能到四倍。用「家庭厨房与中央厨房」讲清 PagedAttention 和 RadixAttention 的根本分歧，摆出五个引擎的分工和实测数据，最后给出一条能直接算并发上限的公式。">
+<meta name="keywords" content="炼丹笔记,本地部署,推理引擎,vLLM">
+<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/32/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="引擎选型与并发压测：同一个模型换个框架，吞吐差一个数量级 · AI 炼丹房">
+<meta property="og:description" content="模型一行没改，卡一张没加，50 路并发下的差距能到四倍。用「家庭厨房与中央厨房」讲清 PagedAttention 和 RadixAttention 的根本分歧，摆出五个引擎的分工和实测数据，最后给出一条能直接算并发上限的公式。">
+<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/32/">
+<meta property="og:site_name" content="AI 炼丹房">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="引擎选型与并发压测：同一个模型换个框架，吞吐差一个数量级 · AI 炼丹房">
+<meta name="twitter:description" content="模型一行没改，卡一张没加，50 路并发下的差距能到四倍。用「家庭厨房与中央厨房」讲清 PagedAttention 和 RadixAttention 的根本分歧，摆出五个引擎的分工和实测数据，最后给出一条能直接算并发上限的公式。">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"引擎选型与并发压测：同一个模型换个框架，吞吐差一个数量级 · AI 炼丹房","description":"模型一行没改，卡一张没加，50 路并发下的差距能到四倍。用「家庭厨房与中央厨房」讲清 PagedAttention 和 RadixAttention 的根本分歧，摆出五个引擎的分工和实测数据，最后给出一条能直接算并发上限的公式。","datePublished":"2026-09-27T16:26:26+08:00","dateModified":"2026-09-27T16:26:26+08:00","keywords":"炼丹笔记,本地部署,推理引擎,vLLM","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/32/"}}</script>
+<style>
+body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
+</head>
+<body>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/32">进入完整站点</a></div></div>
+<div class="snap-wrap"><h1 class="snap-title">引擎选型与并发压测：同一个模型换个框架，吞吐差一个数量级</h1><div class="snap-meta"><span>2026 年 9 月 27 日</span><span>约 14 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E7%82%BC%E4%B8%B9%E7%AC%94%E8%AE%B0">炼丹笔记</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E6%9C%AC%E5%9C%B0%E9%83%A8%E7%BD%B2">本地部署</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E6%8E%A8%E7%90%86%E5%BC%95%E6%93%8E">推理引擎</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/vLLM">vLLM</a></span></div><div class="article-body"><p>先摆一组实测结局，它是整篇的引信。</p>
+<p>一份第三方实验室的对比，用同一个 32B 模型做 50 路并发压测。结论是：两个服务端引擎分别跑出 418 tok/s 和 392 tok/s 的聚合吞吐，而那个我们在上一篇里好不容易配好的 Ollama，<strong>94 tok/s，并且 50 条连接里有 6 条直接超时。</strong></p>
+<p>模型一行没改，卡一张没加。差的只是<strong>搬运这批货的工具</strong>。</p>
+<blockquote>
+<p>⚠️ 这份对比用的是几年前的旧版本号（SGLang v0.3.2 / vLLM v0.8.1 / Ollama v0.9.4），<strong>量级可以参考，倍数别当真</strong>。但它揭示的那件事是真的：<strong>Ollama 从来没被设计来干这个活。</strong></p>
+</blockquote>
+<h2>一个比喻：家庭厨房和中央厨房</h2>
+<p>给你自己做饭，一把刀一口锅就够了。你想什么时候放盐就什么时候放，锅空着也没人管。</p>
+<p>给一百个人同时供餐，问题全变了。你得考虑<strong>备料顺序</strong>、<strong>几口灶同时开谁先用</strong>、<strong>招牌菜的汤底要不要熬一大锅共用</strong>、以及<strong>一个人点多了别人要不要等</strong>。</p>
+<p>区别不在厨师的手艺，<strong>在组织方式</strong>。</p>
+<p>推理引擎做的就是这份组织工作。模型（厨师）还是那个模型，但它决定三件事：<strong>显存怎么切给谁、谁排在谁前面、已经算过的东西能不能 reuse。</strong></p>
+<h2>核心分歧只有两个字：KV 怎么管</h2>
+<p>上一整篇《推理炉具七层》反复证明了一件事：<strong>解码阶段的瓶颈是 KV 缓存，不是算力。</strong> 所以引擎之间真正的差别，几乎全在 KV 缓存的管理方式上。</p>
+<p>两个主流流派，看名字就知道对方的思路。</p>
+<h3>vLLM 的 PagedAttention，把 KV 当内存分页</h3>
+<p>思路直接借操作系统的虚拟内存。把 KV 切成固定大小的小块，按需分配，用完回收。</p>
+<p>它带来的三个好处是连锁的。</p>
+<pre><code class="language-text hljs">按需分页  →  几乎没有碎片（官方称浪费低于 4%）
+         →  能同时驻留更多请求
+         →  空闲块直接还给调度器
+</code></pre>
+<p>还有个巧妙的副产品：<strong>引用计数 + 写时复制</strong>。多个请求共用同一段前缀时，物理块只存一份，谁要改才分裂出自己的副本。官方给的数字是这种做法<strong>最多省 55% 的显存</strong>，并在特定 benchmark 下拿到最高 2.2 倍的吞吐提升。</p>
+<p>代价是它按<strong>块</strong>对齐做前缀复用。你的前缀必须整齐地落在块边界上，命中才算数。</p>
+<h3>SGLang 的 RadixAttention，把 KV 挂在一棵前缀树上</h3>
+<p>SGLang 维护一棵<strong>基数树（radix tree）</strong>，每个请求进来就沿着这棵树找「我这个序列和树里现有的最长公共前缀是什么」，命中就直接复用，<strong>不需要任何配置，也能认分叉的对话历史</strong>。</p>
+<p>对比一下两者的工作方式。</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>vLLM PagedAttention</th>
+<th>SGLang RadixAttention</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>数据结构</td>
+<td>固定大小的块 + 块表</td>
+<td>一棵覆盖所有历史的前缀树</td>
+</tr>
+<tr>
+<td>复用粒度</td>
+<td>按块对齐</td>
+<td><strong>任意深度、逐 token</strong></td>
+</tr>
+<tr>
+<td>淘汰策略</td>
+<td>按块回收</td>
+<td>类似 LRU，会剪掉远端的叶子</td>
+</tr>
+<tr>
+<td>分叉对话</td>
+<td>需要自己命好</td>
+<td><strong>天然支持</strong></td>
+</tr>
+<tr>
+<td>额外配置</td>
+<td><code>--enable-prefix-caching</code></td>
+<td>默认就有</td>
+</tr>
+</tbody></table>
+<p>那一批 Agent 场景（长系统提示、每轮都重复的工具 schema、多轮循环）之所以普遍偏向 SGLang，根源就在这棵树上。</p>
+<p>但要泼一盆冷水：<strong>RadixAttention 论文里那个「最高 6.4 倍」的数字，指的是极端前缀共享的极端负载。</strong> 真实混合流量上，第三方复现出来的量级要温和得多。这件事我们下一节用数据说话。</p>
+<h2>五个选手怎么分工</h2>
+<p>把桌子上这几个都摆出来。版本号取自各项目 GitHub Releases API，<strong>查证时间是 2026 年 10 月初，请自行复核</strong>。</p>
+<table>
+<thead>
+<tr>
+<th>引擎</th>
+<th>当前版本</th>
+<th>协议</th>
+<th>该干的事</th>
+<th>不该干的事</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Ollama</strong></td>
+<td>v0.40.0（09-25）</td>
+<td>MIT</td>
+<td>开发机、单人/小团队、脚本与 Agent 接入</td>
+<td>生产大并发</td>
+</tr>
+<tr>
+<td><strong>llama.cpp</strong></td>
+<td>v0.6.0（10-05）</td>
+<td>MIT</td>
+<td>CPU / Mac / 边缘设备、GGUF 生态的地基</td>
+<td>多用户调度（它不做服务）</td>
+</tr>
+<tr>
+<td><strong>vLLM</strong></td>
+<td>v0.31.0（10-05）</td>
+<td>Apache 2.0</td>
+<td><strong>通用服务端首选</strong>，模型与硬件覆盖最广</td>
+<td>极端前缀复用的极致优化</td>
+</tr>
+<tr>
+<td><strong>SGLang</strong></td>
+<td>v0.5.21（10-02）</td>
+<td>Apache 2.0</td>
+<td>Agent、多轮、结构化输出</td>
+<td>追求最大生态时</td>
+</tr>
+<tr>
+<td><strong>LMDeploy</strong></td>
+<td>v0.18.0（09-28）</td>
+<td>Apache 2.0</td>
+<td>单卡 AMPERE/Ada 上的高效部署，国产卡与特定后端的路子</td>
+<td>—</td>
+</tr>
+</tbody></table>
+<p>几个补充判断。</p>
+<p><strong>llama.cpp 是地基而不是对手。</strong> Ollama 跑的就是它的引擎。它支持的后端是全谱系里最宽的（CUDA、Metal、Vulkan、SYCL、HIP、OpenCL、WebGPU，加上 CPU 上的 AVX/AVX2/AVX512/NEON），<strong>纯 CPU 和树莓派场景它无敌</strong>。但它定位是「跑得动」，不是「多人排队等着用」。</p>
+<p><strong>LMDeploy 值得单独看一眼。</strong> 它自带 TurboMind 这条高度优化的 C++ CUDA 路线，在低延迟单卡上有自己的优势，而它这一版里还在修 NPU 相关的问题，走的正是多后端路线。做国产化部署时它是一条绕不开的路，下一篇会详谈。</p>
+<p><strong>版本这个东西，别信二手。</strong> 网上的文章里同一个项目能同时出现三四个版本号互相打架。<strong>下单之前去 release 页面亲眼看一下</strong>，这五秒钟比什么都值。</p>
+<h2>实测数据，以及它真正的结论</h2>
+<p>先看一组流传较广的 H100 数据（8B 模型、ShareGPT 混合流量）。</p>
+<table>
+<thead>
+<tr>
+<th>引擎</th>
+<th>聚合吞吐</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SGLang（RadixAttention）</td>
+<td>约 16,200 tok/s</td>
+</tr>
+<tr>
+<td>vLLM（PagedAttention）</td>
+<td>约 12,500 tok/s</td>
+</tr>
+<tr>
+<td>TGI</td>
+<td>约 9,800 tok/s</td>
+</tr>
+</tbody></table>
+<p>看起来 SGLang 领先 29%，可以下单了。<strong>别急，我们把流量形状换一下再看。</strong></p>
+<p>同一批第三方评测给出的另外两个结论，才是真正值钱的部分。</p>
+<p><strong>结论一：前缀不重叠时，两者基本持平。</strong> 一堆互不相同的独立请求压上去，差距是 2% 到 5%，<strong>落在每次测试的波动范围内</strong>。</p>
+<p><strong>结论二：模型变大之后差距收窄。</strong> 到 70B 这个量级，负载从「卡在显存」变成了「卡在算力」，两种缓存策略趋同，<strong>有时反而是 vLLM 的批调度略优一点</strong>。</p>
+<p>还有一组更贴近交互的三方测试，10 路并发下的首字延迟是 TensorRT-LLM 105ms、SGLang 112ms、vLLM 120ms。<strong>在毫秒级的差距上谈胜负，不如回去再看一眼你自己的日志。</strong></p>
+<blockquote>
+<p><strong>这才是这批数据唯一的结论</strong>：决定胜负的不是引擎，是<strong>你的流量形状</strong>。请先去量你的前缀命中率，再挑引擎。为别人的头条数字做迁移决策，是所有选型里最贵的一种。</p>
+</blockquote>
+<h3>怎么量那个命中率</h3>
+<p>vLLM 给了两个开关，把这件事从玄学变成了可以读的数。</p>
+<pre><code class="language-bash hljs">vllm serve /models/Qwen3.5-35B-A3B \
+  --enable-prefix-caching \
+  --enable-prompt-tokens-details
+</code></pre>
+<p>开了之后，接口的 usage 里会多出一段明细。</p>
+<pre><code class="language-json hljs">&quot;prompt_tokens&quot;: 12543,
+&quot;prompt_tokens_details&quot;: {
+  &quot;cached_tokens&quot;: 11204,
+  &quot;new_tokens&quot;: 1339
+}
+</code></pre>
+<p><strong>命中多少一目了然。</strong> 有一份自建环境的记录可以参考：一台四卡机器上跑 27B 模型，连续跑四天，<strong>整体前缀命中率在 43% 到 45%</strong>。而在单卡 Agent 场景的一次极端重放里（15 万 token 的固定提示），开了缓存之后耗时从 53.2 秒掉到 2.3 秒，<strong>命中率 93.5%</strong>。</p>
+<p><strong>如果命中率还不到两成，别急着换引擎，先去改你的提示词。</strong> 比如把系统提示里那个每次都在变的时间戳拿掉——前缀必须逐字节一致，一个字符变了整段缓存就废了。</p>
+<h2>压测怎么测才不算白测</h2>
+<p>四个必须盯的数。<strong>吞吐、首字延迟 TTFT、字间延迟 ITL、P95 延迟。</strong> 少了任何一个，你都可能被自己的平均值骗过去。</p>
+<p>三条比这些数字更重要的纪律。</p>
+<p><strong>纪律一：用真实流量形状。</strong> 拿一堆随机长度的 prompt 压出来的数字，和你线上那种「3 万 token 系统提示 + 每轮追加」的形状，可能差一个数量级。先把真实请求的分布抓一遍，照着它造压测集。</p>
+<p><strong>纪律二：必须测满到「开始掉东西」为止。</strong> 很多人都只测到「稳定区」就收工了。请一路加上去，把曲线打到拐弯：拐点在哪、开始抢占了没有、掉下去的是延迟还是请求。</p>
+<pre><code class="language-bash hljs">python -m vllm.entrypoints.openai.api_server  # 服务端
+python benchmark_serving.py \
+  --backend vllm --model your-model \
+  --dataset-name sharegpt --dataset-path ./ShareGPT_V3.json \
+  --num-prompts 1000 --request-rate 32 \
+  --percentile-metrics ttft,tpot,itl,e2e
+</code></pre>
+<p><strong>纪律三：长跑。</strong> 前面那份跑了一个月的测试里，三个引擎各出过不同的幺蛾子：有的在复杂多模态分支上会出现引用计数不释放，得每周重启一次；有的在和别的应用共用机器时表现不佳。<strong>这些只有长跑能发现</strong>，跑十分钟是看不见的。</p>
+<h2>一条能算出并发上限的公式</h2>
+<p>终于到了本篇最实用的部分。把第一篇那个脚本和数字接过来，可以推出一条能直接用的公式。</p>
+<pre><code class="language-text hljs">并发上限 ≈ (可用显存 − 权重 − 运行时开销) ÷ (每 token KV × 平均上下文长度)
+</code></pre>
+<p><strong>括号里的每一项都有出处</strong>，没有一个数是拍脑袋的。拿一张 32 GiB 的卡举个完整例子。</p>
+<pre><code class="language-text hljs">可用显存      32 GiB × 0.90（gpu-memory-utilization）= 28.8 GiB
+模型权重      35B-A3B 的 Q4_K_M，约 21.4 GiB
+运行时开销    约 1.0 GiB
+────────────────────────────────────────
+留给 KV       6.4 GiB
+
+每 token KV   48 KiB（这个值由第一篇脚本读 config.json 算出来）
+平均上下文    8,192 token
+────────────────────────────────────────
+单路占用      8192 × 48 KiB = 384 MiB = 0.375 GiB
+并发上限      6.4 ÷ 0.375 ≈ 17 路
+</code></pre>
+<p><strong>十七路。</strong> 就这样。</p>
+<p>这张卡看着不小，能服侍的并发其实是个位数到十位数。理解了这一点，你就再也不会问出「为什么我们加了卡，用户还是说慢」这种问题了 —— 因为答案从来不在卡的数量，<strong>在这条公式的分母上</strong>。</p>
+<p>三条降低分母的路，按顺序。</p>
+<table>
+<thead>
+<tr>
+<th>手段</th>
+<th>效果</th>
+<th>代价</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>KV 精度降到 fp8</td>
+<td>分母直接砍半</td>
+<td>质量损失极小，仍要先把你的任务测一遍</td>
+</tr>
+<tr>
+<td>前缀缓存</td>
+<td>重复部分不占空间也不重算</td>
+<td>要求前缀逐字节一致</td>
+</tr>
+<tr>
+<td>把平均上下文压下来</td>
+<td>线性下降</td>
+<td>需要改提示词设计或改走 RAG</td>
+</tr>
+</tbody></table>
+<h2>一份可以直接投产的配置</h2>
+<p>vLLM 的启动，<strong>注意按顺序加，每加一项测一次。</strong></p>
+<pre><code class="language-bash hljs">vllm serve /models/Qwen3.5-35B-A3B \
+  --host 127.0.0.1 --port 8000 \
+  --served-model-name internal-assistant \
+  --tensor-parallel-size 1 \
+  --gpu-memory-utilization 0.90 \
+  --max-model-len 32768 \
+  --max-num-batched-tokens 8192 \
+  --enable-prefix-caching \
+  --enable-prompt-tokens-details \
+  --kv-cache-dtype fp8_e5m2 \
+  --disable-log-requests
+</code></pre>
+<p>然后是四个<strong>一个都不能少</strong>的服务件。</p>
+<ul>
+<li><strong>鉴权</strong>。引擎原生接口同样不带锁。<code>--api-key</code> 或者挡一层网关，二选一；</li>
+<li><strong>限流</strong>。按上面算出来的并发上限设一个略低的阈值，超限直接返回 429，<strong>别让它排队排到超时</strong>；</li>
+<li><strong>监控</strong>。引擎自带的 Prometheus 端点要接到 Grafana 上，盯住显存占用率和抢占次数这两个和用户体感直接相关的数；</li>
+<li><strong>优雅重启</strong>。用 systemd 托管，配 <code>Restart=on-failure</code>，并设置好 <code>TimeoutStopSec</code> 让它有机会把在跑的请求打完。</li>
+</ul>
+<blockquote>
+<p>有一份提及的知识点值得放在这里：<strong>PagedAttention 在极短输入（不到 64 个 token）上反而可能吃亏</strong>，块表和查表的开销占比会高到明显。你若是大量几十 token 的分类请求，<strong>先小规模跑一组对照</strong>，别默认它一定更快。</p>
+</blockquote>
+<h2>炼丹小结</h2>
+<ol>
+<li>并发场景下的差距是<strong>数量级的</strong>，但差距的来源是<strong>流量形状</strong>而不是引擎本身；</li>
+<li><strong>PagedAttention 按块复用，RadixAttention 按树逐层复用</strong>，后者天生适合 Agent 和多轮；</li>
+<li>前缀互不重叠时两者<strong>差 2% 到 5%</strong>，在噪声里；模型到 70B 之后差距还会<strong>进一步收窄</strong>；</li>
+<li><strong>决策前先量前缀命中率</strong>，不到两成就先改提示词，别急着换引擎；</li>
+<li>五个引擎各安其位：<strong>开发机 Ollama，边缘 llama.cpp，通用服务端 vLLM，Agent 场景 SGLang，国产化与单卡高效部署看 LMDeploy</strong>；</li>
+<li>压测<strong>必须用真实流量形状，必须测到拐点，必须长跑</strong>；</li>
+<li>并发上限 = (可用显存 − 权重 − 开销) ÷ (每 token KV × 平均上下文)，<strong>每一项都能自己算出来</strong>；</li>
+<li>降分母的优先级是 <strong>KV 精度 → 前缀缓存 → 缩短平均上下文</strong>；</li>
+<li>生产的四个必装件：<strong>鉴权、限流、监控、优雅重启</strong>;</li>
+<li>版本号自己去看 release 页，二手文章里的版本号经常在打架。</li>
+</ol>
+<p>同一个模型换个框架能差一个数量级，这不是玄学，是<strong>同样一块显存被组织方式决定了能装下多少同时在跑的请求</strong>。</p>
+<p>下一篇《数据怎么不出门》，是这个系列的收尾。我们会把这整个链路翻过来检查一遍：权重从哪来、遥测往哪发、日志留在哪、以及在内网那道门到底该堵在哪个位置。</p>
+<p>丹成不必在我，火候自有记录。</p>
+<hr>
+<p><em>附注：版本号与发布日期取自各项目 GitHub Releases API，查证于 2026 年 10 月初。50 路并发对比数据来自第三方实验室的公开测试，所用版本较旧（SGLang v0.3.2 / vLLM v0.8.1 / Ollama v0.9.4），仅作量级参考。H100 吞吐与 TTFT 数据为多家第三方评测的汇总整理，不同硬件、模型、流量分布下波动可达数倍。PagedAttention 的 4% 碎片率、55% 显存节省与 2.2 倍提升为官方公布口径，附有其特定 benchmark 条件。关于 KV 卸载到 CPU/磁盘/远端存储等较新的能力，公开资料描述口径不一，请以官方文档与你的实测为准。</em></p>
+</div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/29/">显存这道算术题：买卡之前必须算的三笔账</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/30/">量化到底牺牲了什么：把精度换成显存的那笔交易</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/31/">Ollama 从玩具到服务：交出 11434 端口之前的七件事</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/32">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LoRA 是什么：不动丹体，只贴一张便利贴 · AI 炼丹房</title>
+<meta name="description" content="全参数微调一个 7B 模型要几十 GB 显存，LoRA 让它降到一张消费级显卡就能跑。用「百科全书贴便利贴」的比喻讲清原理，附可直接用的代码和 rank 怎么选。">
+<meta name="keywords" content="炼丹笔记,微调,LoRA,教程">
+<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/8/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LoRA 是什么：不动丹体，只贴一张便利贴 · AI 炼丹房">
+<meta property="og:description" content="全参数微调一个 7B 模型要几十 GB 显存，LoRA 让它降到一张消费级显卡就能跑。用「百科全书贴便利贴」的比喻讲清原理，附可直接用的代码和 rank 怎么选。">
+<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/8/">
+<meta property="og:site_name" content="AI 炼丹房">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="LoRA 是什么：不动丹体，只贴一张便利贴 · AI 炼丹房">
+<meta name="twitter:description" content="全参数微调一个 7B 模型要几十 GB 显存，LoRA 让它降到一张消费级显卡就能跑。用「百科全书贴便利贴」的比喻讲清原理，附可直接用的代码和 rank 怎么选。">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"LoRA 是什么：不动丹体，只贴一张便利贴 · AI 炼丹房","description":"全参数微调一个 7B 模型要几十 GB 显存，LoRA 让它降到一张消费级显卡就能跑。用「百科全书贴便利贴」的比喻讲清原理，附可直接用的代码和 rank 怎么选。","datePublished":"2026-09-27T16:20:00+08:00","dateModified":"2026-09-27T16:20:00+08:00","keywords":"炼丹笔记,微调,LoRA,教程","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/8/"}}</script>
+<style>
+body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
+</head>
+<body>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/8">进入完整站点</a></div></div>
+<div class="snap-wrap"><h1 class="snap-title">LoRA 是什么：不动丹体，只贴一张便利贴</h1><div class="snap-meta"><span>2026 年 9 月 27 日</span><span>约 5 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E7%82%BC%E4%B8%B9%E7%AC%94%E8%AE%B0">炼丹笔记</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%BE%AE%E8%B0%83">微调</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/LoRA">LoRA</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E6%95%99%E7%A8%8B">教程</a></span></div><div class="article-body"><p>上一讲我们说要微调。你兴冲冲地去查教程，然后被显存需求劝退了：</p>
+<blockquote>
+<p>微调一个 7B 模型？请准备 <strong>80GB 以上</strong>显存。</p>
+</blockquote>
+<p>一张 A100 80G，或者两张 4090。对个人开发者来说，这基本等于「炼丹是卡大户的专利」。</p>
+<p><strong>直到 LoRA 出现。</strong></p>
+<h2>一个比喻：百科全书和便利贴</h2>
+<p>想象模型是一本<strong>已经印好的 1000 页百科全书</strong>。</p>
+<p>现在你想让它变成「专门讲你们公司业务的百科全书」。两条路：</p>
+<table>
+<thead>
+<tr>
+<th>路</th>
+<th>怎么做</th>
+<th>代价</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>全参数微调</strong></td>
+<td>把整本书<strong>重新印刷一遍</strong>，每一页都改</td>
+<td>昂贵、耗时，还得保存一整本新书</td>
+</tr>
+<tr>
+<td><strong>LoRA</strong></td>
+<td>书<strong>一个字都不动</strong>，在相关页上<strong>贴便利贴</strong>，写补充和更正</td>
+<td>只需几十张便利贴，随时可撕</td>
+</tr>
+</tbody></table>
+<p><strong>LoRA（Low-Rank Adaptation，低秩适配）</strong> 干的就是「贴便利贴」这件事：</p>
+<blockquote>
+<p><strong>冻住原模型的所有参数（一个字都不改），只在旁边训练一对很小的矩阵，用的时候加在原参数上。</strong></p>
+</blockquote>
+<h2>原理：大白话版本</h2>
+<p>原模型里有很多巨大的数字矩阵（权重）。全参数微调要把这些矩阵里<strong>每一个数字</strong>都更新一遍——7B 就是 70 亿个数字，这就是显存爆炸的原因。</p>
+<p>LoRA 的做法很聪明。它不直接改那个大矩阵，而是：</p>
+<pre><code class="language-text hljs">原来：  输出 = 大矩阵 W × 输入          ← W 有 70 亿个参数，全都要改
+
+LoRA：  输出 = 大矩阵 W × 输入  +  (小矩阵 B × 小矩阵 A) × 输入
+              ↑ 冻住不动，不训练           ↑ 只训练这两个小东西
+</code></pre>
+<p>其中的关键在于：如果大矩阵 W 是 <code>4096 × 4096</code>（约 1600 万个参数），LoRA 用 <code>4096 × 8</code> 和 <code>8 × 4096</code> 两个细长条相乘来代替——<strong>参数量从 1600 万降到 6.5 万</strong>，只有原来的 <strong>0.4%</strong>。</p>
+<p>那个 <code>8</code> 就是著名的超参数 <strong>rank（秩）</strong>，你可以理解成「便利贴的大小」。</p>
+<h2>数字对比：为什么 LoRA 这么省</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>全参数微调</th>
+<th>LoRA</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>可训练参数</td>
+<td>70 亿（全部）</td>
+<td>几百万（通常 0.1%～1%）</td>
+</tr>
+<tr>
+<td>显存需求（7B 级）</td>
+<td>数十 GB 起</td>
+<td>消费级显卡（如 16～24GB）常常够用</td>
+</tr>
+<tr>
+<td>训练速度</td>
+<td>慢</td>
+<td>快很多（要算的参数少了）</td>
+</tr>
+<tr>
+<td>产物大小</td>
+<td>一整个新模型（十几 GB）</td>
+<td><strong>几十 MB 的小文件</strong></td>
+</tr>
+<tr>
+<td>换任务</td>
+<td>要重新训一个完整模型</td>
+<td>换一张「便利贴」就行</td>
+</tr>
+</tbody></table>
+<p><strong>最后两项是 LoRA 被疯狂采用的真正原因</strong>：产物只有几十 MB，意味着你可以<strong>一个基座模型配 N 张便利贴</strong>，按任务随时切换，存储和分发成本几乎为零。</p>
+<h2>上手代码</h2>
+<p>用 Hugging Face 的 <code>peft</code> 库，改动很小：</p>
+<pre><code class="language-python hljs">from transformers import AutoModelForCausalLM
+from peft import LoraConfig, get_peft_model
+
+# 1. 加载基座模型（可以用量化版省显存）
+model = AutoModelForCausalLM.from_pretrained(&quot;Qwen/Qwen2.5-7B-Instruct&quot;)
+
+# 2. 贴上「便利贴」
+config = LoraConfig(
+    r=16,                              # rank：便利贴大小，见下文
+    lora_alpha=32,                     # 缩放系数，一般设成 r 的 2 倍
+    target_modules=[&quot;q_proj&quot;, &quot;v_proj&quot;],  # 贴在哪些层上
+    lora_dropout=0.05,
+    task_type=&quot;CAUSAL_LM&quot;,
+)
+model = get_peft_model(model, config)
+
+# 3. 看看省了多少
+model.print_trainable_parameters()
+# trainable params: 8,388,608 || all params: 7,616,000,000 || trainable%: 0.11%
+</code></pre>
+<p>看到那个 <strong>0.11%</strong> 了吗？这就是 LoRA 的魔法。</p>
+<p>训完之后：</p>
+<pre><code class="language-python hljs">model.save_pretrained(&quot;my_lora&quot;)   # 只存便利贴，通常几十 MB
+
+# 想把它和原模型合并成一个完整模型也可以
+merged = model.merge_and_unload()
+merged.save_pretrained(&quot;my_merged_model&quot;)
+</code></pre>
+<h2>rank 怎么选</h2>
+<p><code>r</code> 是 LoRA 最重要的超参，它决定「便利贴有多大」：</p>
+<table>
+<thead>
+<tr>
+<th>r 值</th>
+<th>特点</th>
+<th>适合</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>4 ～ 8</strong></td>
+<td>极小，学的东西少</td>
+<td>简单格式任务、风格微调</td>
+</tr>
+<tr>
+<td><strong>16 ～ 32</strong></td>
+<td><strong>常用区间</strong></td>
+<td>大多数任务从这里起步</td>
+</tr>
+<tr>
+<td><strong>64 ～ 128</strong></td>
+<td>容量大</td>
+<td>复杂任务、要学较多新知识</td>
+</tr>
+</tbody></table>
+<p><strong>选择原则</strong>：</p>
+<ul>
+<li>任务越简单、数据量越小 → r 越小；</li>
+<li>r 太大会<strong>过拟合</strong>（记住训练数据但不会泛化），也会拖慢训练；</li>
+<li><strong>从 16 起步</strong>，效果不够再往上加。</li>
+</ul>
+<p><code>lora_alpha</code> 一般直接设成 <code>r</code> 的 2 倍，是个省心的默认值。</p>
+<h2>LoRA 的局限（别神化它）</h2>
+<table>
+<thead>
+<tr>
+<th>局限</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>学大量新知识不如全参</strong></td>
+<td>便利贴容量有限，塞不下太多新东西。要注大量知识，还是得 RAG</td>
+</tr>
+<tr>
+<td><strong>rank 太小会欠拟合</strong></td>
+<td>任务复杂但 r 设成 4，怎么训都训不好</td>
+</tr>
+<tr>
+<td><strong>对超参敏感</strong></td>
+<td>学习率、rank、target_modules 都会影响结果，要调</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>经验法则：<strong>LoRA 擅长学「行为和格式」，不擅长学「大量事实知识」。</strong> 这跟上一讲的结论是一致的——缺知识找 RAG。</p>
+</blockquote>
+<h2>炼丹小结</h2>
+<ol>
+<li>LoRA = <strong>冻住原模型，只训练一对小矩阵</strong>，参数量降到 0.1% 量级；</li>
+<li>比喻：<strong>不动百科全书，只在页边贴便利贴</strong>；</li>
+<li>三大好处：<strong>省显存</strong>（消费级显卡可跑）、<strong>产物小</strong>（几十 MB）、<strong>可插拔</strong>（一基座配多任务）；</li>
+<li><strong>rank 从 16 起步</strong>，任务简单往下调，复杂往上调；</li>
+<li>局限：擅长学<strong>行为格式</strong>，不擅长灌<strong>大量知识</strong>。</li>
+</ol>
+<p>有了 LoRA，炼丹的门槛从「卡大户」降到了「一张消费级显卡」。</p>
+<p>但到这里为止，我们讲的都是<strong>监督微调</strong>——给它看标准答案让它照着学。而 2026 年让模型变强的真正主力，是让它<strong>自己做题、自己对答案</strong>。</p>
+<p>下一讲，后训练与 RLVR——大模型是怎么「刷题」刷成高手的。</p>
+<p>丹成不必在我，火候自有记录。</p>
+</div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/9/">微调入门：通识教育之后，再上岗前培训</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/7/">后训练的六道火候：大模型是怎么「刷题」变强的</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/4/">学习路线图：从「AI 是什么」到「自己炼一炉丹」</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/8">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</body>
+</html>

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ollama 从玩具到服务：交出 11434 端口之前的七件事 · AI 炼丹房</title>
+<meta name="description" content="同一个模型在自己电脑上跑得挺好，搬到内网给同事用就开始变慢、忘事、掉线。问题几乎从不出现在模型上，而在几个环境变量和一个默认五分钟的设定里。从 ollama ps 的 PROCESSOR 列讲起，到可被 systemd 托管的完整配置。">
+<meta name="keywords" content="炼丹笔记,本地部署,Ollama,内网服务">
+<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/31/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Ollama 从玩具到服务：交出 11434 端口之前的七件事 · AI 炼丹房">
+<meta property="og:description" content="同一个模型在自己电脑上跑得挺好，搬到内网给同事用就开始变慢、忘事、掉线。问题几乎从不出现在模型上，而在几个环境变量和一个默认五分钟的设定里。从 ollama ps 的 PROCESSOR 列讲起，到可被 systemd 托管的完整配置。">
+<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/31/">
+<meta property="og:site_name" content="AI 炼丹房">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Ollama 从玩具到服务：交出 11434 端口之前的七件事 · AI 炼丹房">
+<meta name="twitter:description" content="同一个模型在自己电脑上跑得挺好，搬到内网给同事用就开始变慢、忘事、掉线。问题几乎从不出现在模型上，而在几个环境变量和一个默认五分钟的设定里。从 ollama ps 的 PROCESSOR 列讲起，到可被 systemd 托管的完整配置。">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Ollama 从玩具到服务：交出 11434 端口之前的七件事 · AI 炼丹房","description":"同一个模型在自己电脑上跑得挺好，搬到内网给同事用就开始变慢、忘事、掉线。问题几乎从不出现在模型上，而在几个环境变量和一个默认五分钟的设定里。从 ollama ps 的 PROCESSOR 列讲起，到可被 systemd 托管的完整配置。","datePublished":"2026-09-27T16:26:27+08:00","dateModified":"2026-09-27T16:26:27+08:00","keywords":"炼丹笔记,本地部署,Ollama,内网服务","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/31/"}}</script>
+<style>
+body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
+</head>
+<body>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/31">进入完整站点</a></div></div>
+<div class="snap-wrap"><h1 class="snap-title">Ollama 从玩具到服务：交出 11434 端口之前的七件事</h1><div class="snap-meta"><span>2026 年 9 月 27 日</span><span>约 14 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E7%82%BC%E4%B8%B9%E7%AC%94%E8%AE%B0">炼丹笔记</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E6%9C%AC%E5%9C%B0%E9%83%A8%E7%BD%B2">本地部署</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/Ollama">Ollama</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%86%85%E7%BD%91%E6%9C%8D%E5%8A%A1">内网服务</a></span></div><div class="article-body"><p>每个能把大模型跑在本地的人，大概都经历过同一种尴尬。</p>
+<p>自己笔记本上跑得好好的一个模型，搬到内网服务器给同事共用之后，开始出现三种奇怪的病：<strong>隔十分钟问一句就卡三秒；明明给足了上下文文档，它却说没看到；两个人同时用就有一个直接掉线。</strong></p>
+<p>模型没换，代码没改。差的不是模型，是**「自己一个人用」和「当成一个服务提供出去」之间，隔着七件没人提醒你的事**。</p>
+<h2>一个比喻：家里的咖啡机和办公室的茶水间</h2>
+<p>给你一个人泡咖啡，问题很单纯：豆子磨好，水烧热，按下按钮。</p>
+<p>给一整个办公室泡，就多了四个新麻烦。</p>
+<ul>
+<li><strong>预热要不要一直开着</strong>。人走光了咖啡机还在烧水，电费在流；关了又让下一个来的人等半天；</li>
+<li><strong>几个人伸手时要怎么排队</strong>。三个人同时接，出水量还是那么多，谁都接不满；</li>
+<li><strong>谁来负责加豆加水</strong>。这事没人管，第三天就没人能喝了；</li>
+<li><strong>隔壁公司能不能进来蹭</strong>。门开着的，人家闻着味就来了。</li>
+</ul>
+<p>Ollama 是那台咖啡机。前面两篇我们关心的是「能不能把它点着」，这一篇关心的是这四个新麻烦。</p>
+<p>下面七件事按顺序排，越靠前越容易踩，也越容易修。</p>
+<h2>第一件事：先问它「你到底把模型放哪了」</h2>
+<p>这是所有诊断里性价比最高的一条命令。</p>
+<pre><code class="language-bash hljs">ollama ps
+</code></pre>
+<pre><code>NAME              ID              SIZE     PROCESSOR    UNTIL
+qwen3.5:27b       a1b2c3d4e5f6    17 GB    48%/52% CPU/GPU    4 minutes from now
+</code></pre>
+<p>请死盯 <strong>PROCESSOR</strong> 这一列。它的三种读数分别意味着完全不同的事。</p>
+<table>
+<thead>
+<tr>
+<th>读数</th>
+<th>含义</th>
+<th>该做什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>100% GPU</code></td>
+<td>模型整个在你的显存里</td>
+<td>正常，这是理想状态</td>
+</tr>
+<tr>
+<td><code>100% CPU</code></td>
+<td>一点没进显存，全在系统内存跑</td>
+<td>会慢一个数量级，查驱动或显存</td>
+</tr>
+<tr>
+<td><code>48%/52% CPU/GPU</code></td>
+<td><strong>被劈成了两半</strong>，一半在内存里</td>
+<td>最坑的一种，见下</td>
+</tr>
+</tbody></table>
+<p>第三种是最多人吃了哑巴亏的地方。模型被拆开之后，<strong>住在系统内存里的那部分基本是按 CPU 速度跑的</strong>，它会把整条链路拖到自己那个速度上。结果就是显卡利用率看着很低，输出却慢得像爬。</p>
+<blockquote>
+<p><strong>一条能省半天的诊断规则</strong>：看到有人抱怨「显存明明够为什么还这么慢」，先看 PROCESSOR 列。<strong>显存里装不下 ≠ 会报错，很多时候只是悄悄地被切了一半走系统内存。</strong></p>
+</blockquote>
+<p>同一个模型在两台机器上表现不一致，解释起来并不复杂。回头去看第一篇那张三笔账就明白了：上下文往上翻，显存里挤进来的新东西变多，模型本身就被往外推。</p>
+<h2>第二件事：默认 4096 的上下文，是你所有怪问题的源头</h2>
+<p>这一条我给它排在第二，是因为它制造的症状最像灵异事件。</p>
+<p>Ollama <strong>不是按模型标称的上下文</strong>来分配缓存的，它按你的显卡显存挑一个默认值。按官方 2026 年 8 月的文档，规则是三档。</p>
+<table>
+<thead>
+<tr>
+<th>可用显存</th>
+<th>默认上下文</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>低于 24 GiB</td>
+<td>4,096</td>
+</tr>
+<tr>
+<td>24 到 48 GiB</td>
+<td>32,768</td>
+</tr>
+<tr>
+<td>48 GiB 及以上</td>
+<td>262,144</td>
+</tr>
+</tbody></table>
+<p>于是会出现一个很有喜剧效果的场面：同一个模型，在笔记本上只有 4096 的窗口，搬到工作站上不作任何设置就变成了 32768。<strong>你的模型在两台机器上的表现不一样，而你没改过任何东西。</strong></p>
+<p>症状也就解释得通了。你的文档字数没问题，问题是<strong>窗口只有四千多</strong>，超出去的部分被悄悄截掉了，而且不会报错。</p>
+<h3>这里有个流传很广的错误写法</h3>
+<p>很多教程和 <code>.env</code> 文件里写着这一行。</p>
+<pre><code class="language-bash hljs">OLLAMA_NUM_CTX=24576     # ❌ 这一行是无效的
+</code></pre>
+<p><strong>服务器根本不读这个变量。</strong> 有人直接在官方 Docker 镜像上验证过：设了 <code>OLLAMA_NUM_CTX=24576</code> 之后发请求，模型照样按显存默认加载成 32768，一个字都没生效，也不报错。</p>
+<p>它之所以传得这么广，是因为 <code>num_ctx</code> 这个名字本身是真实存在的——它是请求体里的键名、是 Modelfile 里的参数名、也是交互模式下 <code>/set parameter num_ctx</code> 的参数名。人们很自然地推测前面加个前缀就能当环境变量用，<strong>偏偏这一条不成立</strong>。</p>
+<p>真正管用的三个写法是这些。</p>
+<pre><code class="language-bash hljs"># 1) 服务端全局默认值
+OLLAMA_CONTEXT_LENGTH=64000 ollama serve
+
+# 2) 单次请求里指定
+curl http://localhost:11434/api/chat -d &#39;{
+  &quot;model&quot;: &quot;qwen3.5:27b&quot;,
+  &quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;...&quot;}],
+  &quot;options&quot;: {&quot;num_ctx&quot;: 64000}
+}&#39;
+
+# 3) 写进 Modelfile 固化下来，推荐这种
+PARAMETER num_ctx 64000
+</code></pre>
+<p>改完之后记得用 <code>ollama ps</code> 里的 <strong>CONTEXT 列</strong>确认是否真的生效。<strong>不要相信变量名字，去看实际加载出来的数字。</strong></p>
+<h3>该给多少</h3>
+<p>Ollama 自己的建议是：<strong>做网页检索、Agent、编程工具这类活，上下文至少给到 64,000 token。</strong></p>
+<p>对照上面那张三档表你会发现一件尴尬的事——<strong>任何低于 48 GiB 的显卡，默认值都达不到这条线。</strong> 所以只要你打算接 Agent，这一项就必须显式设置，没有例外。</p>
+<p>代价也要说清楚。同一份社区测量给出了很直观的数字：一个 1B 模型，4096 上下文占 1.52 GB 内存，16384 占 2.02 GB，65536 直接到 4.00 GB，<strong>平均每多一千 token 多约 40 MB</strong>。模型还是那个 1.3 GB 的模型，内存占用能翻将近三倍。</p>
+<p>而这笔账<strong>是乘在并发槽上的</strong>，这一点我们下一节就撞上。</p>
+<h2>第三件事：模型默认五分钟就下班</h2>
+<p>这是第二个制造「感觉随机」行为的开关。</p>
+<p><strong>最后一次请求之后再过五分钟，Ollama 会把模型从显存里请出去</strong>，腾地方给别人。所以会出现这样的体验。</p>
+<pre><code class="language-text hljs">第 1 句提问      秒回
+第 2 句提问      秒回
+去泡了杯咖啡回来 卡三秒才出第一个字
+</code></pre>
+<p>不是网络抖了，是它下过一次班，现在在重新上班。</p>
+<p>这个默认值对开发机是体贴的（省显存），对服务是致命的。改法有三种粒度。</p>
+<pre><code class="language-bash hljs"># 全局：单位可以是 10m、1h，-1 表示永不下线
+OLLAMA_KEEP_ALIVE=-1 ollama serve
+
+# 单次请求：用完立刻卸载
+&quot;keep_alive&quot;: 0
+
+# 单次请求：这一轮之后留十分钟
+&quot;keep_alive&quot;: &quot;10m&quot;
+</code></pre>
+<p><strong>常驻不等于免费。</strong> 一直驻留意味着这一块显存被它长期独占，别的模型想加载就只能在外面排队等着。</p>
+<h3>并发也不是免费的</h3>
+<p>这是这一节最容易被忽略的一笔账。</p>
+<p><code>OLLAMA_NUM_PARALLEL</code> 控制同时能处理几个请求。听起来像是「白送的性能」，实际不是——<strong>每开一个并行槽，就得多准备一份上下文缓冲</strong>。</p>
+<pre><code class="language-text hljs">1 路 × 32K    一份 KV
+4 路 × 32K    四份 KV
+</code></pre>
+<p>把它和第一篇那个脚本合起来用：把「64K 上下文 × 4 路并发」代进去，你会发现 KV 那一项<strong>轻松超过模型权重本身</strong>。很多人以为自己还有大半张卡，其实那里一半已经预售出去了。</p>
+<p>配套的还有一个 <code>OLLAMA_MAX_LOADED_MODELS</code>，决定最多同时驻留几个不同模型。两个都设得很大，是内网服务器 OOM 的头号原因。</p>
+<blockquote>
+<p><strong>给一组能直接用的起步值</strong>：单卡 24 GiB 跑一个模型给小团队用，<code>OLLAMA_NUM_PARALLEL=2</code>、<code>OLLAMA_KEEP_ALIVE=10m</code>、<code>num_ctx=32768</code>。先按这组跑一周，看 PROCESSOR 列和显存，再往上调。</p>
+</blockquote>
+<h2>第四件事：Modelfile 才是那个「配置」</h2>
+<p>在所有人各自往请求里塞参数的团队里出配置漂移是迟早的事。Ollama 给的正解是 <strong>Modelfile</strong>，把整套参数固化成一个有名字的模型。</p>
+<pre><code class="language-dockerfile hljs">FROM qwen3.5:27b-instruct-q4_K_M
+
+PARAMETER num_ctx        64000
+PARAMETER temperature    0.3
+PARAMETER num_predict    2048
+
+SYSTEM &quot;&quot;&quot;
+你是「AI 炼丹房」内部的工程助手。回答都用简体中文。
+不确定的地方直接说不确定，不要编。
+涉及具体版本和价格，一律标注数据来源和核对日期。
+&quot;&quot;&quot;
+
+PARAMETER stop &quot;&lt;|im_end|&gt;&quot;
+</code></pre>
+<p>然后把它造出来，起一个团队统一的名字。</p>
+<pre><code class="language-bash hljs">ollama create alchemy-assistant -f ./Modelfile
+ollama run alchemy-assistant
+</code></pre>
+<p>好处立刻有三个：<strong>参数不再漂移</strong>、<strong>团队成员用一个名字就能拿到同一套配置</strong>、<strong>系统提示和停止词不用再写进每个请求体</strong>。</p>
+<p>从 0.35.1 起 Modelfile 还支持 <code>CAPABILITY</code> 声明，可以明确写出这个模型支持哪些能力。如果你接的是 Agent 或者需要工具调用，<strong>务必先确认这个模型的 <code>ollama show</code> 输出里列了 <code>tools</code></strong>，没有的话 Agent 会以一种很安静的方式不好使。</p>
+<h2>第五件事：把它真的当成一个服务</h2>
+<p>前面的配置都还会随着终端关闭而失效。到了这一步，我们才把它变成一个「开机就有」的东西。</p>
+<p>先说一个必须先讲的硬事实：<strong>Ollama 的原生接口没有内置鉴权。</strong> 谁能连到那个端口，谁就能用你的显卡、读你加载的模型。它在容器网络和内网里尤其危险。</p>
+<blockquote>
+<p><strong>把它绑在 <code>127.0.0.1</code> 上，前面用反向代理挡一层</strong>，是成本最低的正确做法。直接把 11434 暴露到办公网，等于在公共楼梯间放了一台不要钱的咖啡机。</p>
+</blockquote>
+<p>一份可以直接落到 <code>/etc/systemd/system/ollama.service</code> 的参考。</p>
+<pre><code class="language-ini hljs">[Unit]
+Description=Ollama Service
+After=network-online.target
+
+[Service]
+Type=simple
+User=ollama
+Environment=OLLAMA_HOST=127.0.0.1:11434
+Environment=OLLAMA_KEEP_ALIVE=10m
+Environment=OLLAMA_NUM_PARALLEL=2
+Environment=OLLAMA_MAX_LOADED_MODELS=1
+Environment=OLLAMA_CONTEXT_LENGTH=64000
+Environment=OLLAMA_FLASH_ATTENTION=1
+Environment=OLLAMA_KV_CACHE_TYPE=q8_0
+ExecStart=/usr/local/bin/ollama serve
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<p>几个值得说明的点。</p>
+<ul>
+<li><strong><code>OLLAMA_HOST=127.0.0.1</code></strong> 而不是 <code>0.0.0.0</code>。对外就交给 Nginx 反代，顺手把 Basic Auth 或者公司 SSO 那一层加上；</li>
+<li><strong><code>OLLAMA_KV_CACHE_TYPE=q8_0</code></strong> 正是第一篇算出来的那个结论，KV 换 8 bit，几乎无损地省一大块；</li>
+<li><strong><code>OLLAMA_FLASH_ATTENTION=1</code></strong> 开启 Flash Attention，长上下文收益明显，前提是你的驱动和卡支持；</li>
+<li><strong>用独立的 <code>User=ollama</code> 跑</strong>，别图省事用 root。</li>
+</ul>
+<p>改完之后。</p>
+<pre><code class="language-bash hljs">sudo systemctl daemon-reload
+sudo systemctl enable --now ollama
+systemctl status ollama
+</code></pre>
+<p>对外的话，它还顺便提供了一个 <strong>OpenAI 兼容接口</strong> <code>http://localhost:11434/v1</code>，绝大多数现成客户端改个 base URL 就能连，API key 那栏随便填个 <code>ollama</code> 即可。</p>
+<pre><code class="language-python hljs">from openai import OpenAI
+
+client = OpenAI(base_url=&quot;http://127.0.0.1:11434/v1&quot;, api_key=&quot;ollama&quot;)
+r = client.chat.completions.create(
+    model=&quot;alchemy-assistant&quot;,
+    messages=[{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;把这段日志按错误类型归类&quot;}],
+)
+print(r.choices[0].message.content)
+</code></pre>
+<h2>第六件事：升级之前必须先看变更清单</h2>
+<p>这一条听着像废话，但它是这一篇里唯一能让你免于「昨天还好好的」的方法。</p>
+<p>Ollama 版本迭代很快，最新稳定版是 <strong>v0.40.0（2026 年 9 月 25 日发布）</strong>。这一版在 Apple Silicon 上做了一个改动：<strong>对支持的模型架构，默认改走 MLX 运行时</strong>，不需要任何配置。支持的名单里除了这一版新增的几个系列，还包括几类「决策模型」和一个 embedding 模型。</p>
+<blockquote>
+<p><strong>请把它看成一个行为变更，而不只是一个性能提升。</strong> 默认运行时换了，意味着内存占用曲线、吞吐、乃至分词行为都可能跟着动。有人在上线前的建议写得很实在：升级前先钉住旧版本，把基线提示词、输出、延迟、资源占用都抓一份，升级后逐项比对。</p>
+</blockquote>
+<p>当时还有第三方整理的每日汇总列出了一批尚未修复的回归项（涉及多模态输入被静默丢弃、接口参数未按预期生效、拉取时磁盘满导致静默失败等）。<strong>这类清单的状态每天都在变，不要照着它做决策</strong>，但它说明了一件事：<strong>新版本带着回归是常态，把这个假设写进升级流程里，比记住任何一个具体 bug 有用。</strong></p>
+<h2>第七件事：知道它什么时候不够用</h2>
+<p>最后要给 Ollama 的边界画条线，不然你会拿它去做它不擅长的事。</p>
+<p>Ollama 的底子很清楚：<strong>MIT 协议，底层跑的是 llama.cpp 引擎</strong>，主打单机、开发者友好、脚本和 Agent 集成。这一层让它非常适合「一台开发机 + 一个小团队 + 一堆脚本」这种场景。</p>
+<p>但有几件事，它本来就不是为这种场景设计的。</p>
+<table>
+<thead>
+<tr>
+<th>你的情况</th>
+<th>该往后看什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>大量请求共享同一段系统提示（RAG、多轮）</td>
+<td>需要显式的前缀复用，去看服务端引擎</td>
+</tr>
+<tr>
+<td>多人并发、要稳定的 P95 延迟</td>
+<td>需要连续批处理和显式的调度策略</td>
+</tr>
+<tr>
+<td>要 Prometheus 指标、要细粒度并行</td>
+<td>Ollama 这一层不提供</td>
+</tr>
+<tr>
+<td>只在 Mac 上追求单机极限</td>
+<td>可以直接试 MLX 系</td>
+</tr>
+<tr>
+<td>想要图形界面、点几下就能挑模型</td>
+<td>LM Studio 这类商业软件自 2025 年 7 月起允许在工作场景免费使用，留意它仍是闭源协议</td>
+</tr>
+</tbody></table>
+<p>一句话总结它的边界：<strong>Ollama 是本地部署里最好的「第一台」，不是「最后一台」。</strong></p>
+<p>下一篇《引擎选型与并发压测》，我们会把桌子上剩下的几个选手摆出来——llama.cpp、LM Studio、vLLM、SGLang、LMDeploy——讲清楚它们各自适合哪种活，以及为什么同一个模型换个引擎吞吐能差一个数量级。</p>
+<h2>炼丹小结</h2>
+<ol>
+<li>诊断一律从 <code>ollama ps</code> 的 <strong>PROCESSOR 列</strong>开始，<code>100% CPU</code> 或混着跑，就是慢的根源；</li>
+<li><strong>默认上下文按显存分三档</strong>，同一模型在不同机器上可以差八倍，且截断时不报错；</li>
+<li><strong><code>OLLAMA_NUM_CTX</code> 是无效变量</strong>，用 <code>OLLAMA_CONTEXT_LENGTH</code>、<code>num_ctx</code> 请求参数或 Modelfile，改完用 CONTEXT 列验证；</li>
+<li>接 Agent 至少 <strong>64,000 token</strong>，任何低于 48 GiB 的卡默认都不达标；</li>
+<li>上下文内存<strong>乘在并发槽上</strong>，这一项常常超过权重本身；</li>
+<li><strong>模型默认五分钟卸载</strong>，<code>keep_alive</code> 支持 <code>-1</code>、<code>0</code>、<code>10m</code> 三种写法，生产按需调；</li>
+<li>团队用请把配置写进 <strong>Modelfile</strong>，避免每人各自传参导致漂移；</li>
+<li><strong>原生接口没有鉴权</strong>，绑 <code>127.0.0.1</code> 加一层反向代理，别直接暴露到办公网；</li>
+<li><strong>升级先看变更清单</strong>，把「默认运行时可能变了」当成默认假设；</li>
+<li>它是本地部署最好的第一台机器，<strong>多人高并发就换引擎</strong>。</li>
+</ol>
+<p>Ollama 把「跑起来」这件事做到了一键，这是它最大的功劳。剩下的「跑得好、跑得稳、不被人蹭」，还得你自己动手。</p>
+<p>丹成不必在我，火候自有记录。</p>
+<hr>
+<p><em>附注：默认上下文三档、<code>keep_alive</code> 五分钟与 PROCESSOR 列的含义来自 Ollama 官方文档与 FAQ。<code>OLLAMA_NUM_CTX</code> 无效的结论来自第三方在官方 Docker 镜像上做的实测（验证版本为当时的一版客户端），环境变量名以 <code>ollama serve --help</code> 的实际输出为准。版本号与发布日期取自 GitHub Releases API，查证时间为 2026 年 10 月初，请自行复核最新版本。</em></p>
+</div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/29/">显存这道算术题：买卡之前必须算的三笔账</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/30/">量化到底牺牲了什么：把精度换成显存的那笔交易</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/32/">引擎选型与并发压测：同一个模型换个框架，吞吐差一个数量级</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/31">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</body>
+</html>

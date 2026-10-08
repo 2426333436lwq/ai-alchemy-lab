@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt 工程入门：从「念咒」到「配方」 · AI 炼丹房</title>
+<meta name="description" content="好的 Prompt 不是玄学咒语，而是可复用的配方：角色、上下文、任务、约束、输出格式，一味都不能少。">
+<meta name="keywords" content="Prompt工程,大模型,教程">
+<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/2/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Prompt 工程入门：从「念咒」到「配方」 · AI 炼丹房">
+<meta property="og:description" content="好的 Prompt 不是玄学咒语，而是可复用的配方：角色、上下文、任务、约束、输出格式，一味都不能少。">
+<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/2/">
+<meta property="og:site_name" content="AI 炼丹房">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Prompt 工程入门：从「念咒」到「配方」 · AI 炼丹房">
+<meta name="twitter:description" content="好的 Prompt 不是玄学咒语，而是可复用的配方：角色、上下文、任务、约束、输出格式，一味都不能少。">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Prompt 工程入门：从「念咒」到「配方」 · AI 炼丹房","description":"好的 Prompt 不是玄学咒语，而是可复用的配方：角色、上下文、任务、约束、输出格式，一味都不能少。","datePublished":"2026-09-27T16:27:30+08:00","dateModified":"2026-09-16T13:50:35.128697+08:00","keywords":"Prompt工程,大模型,教程","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/2/"}}</script>
+<style>
+body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
+</head>
+<body>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/2">进入完整站点</a></div></div>
+<div class="snap-wrap"><h1 class="snap-title">Prompt 工程入门：从「念咒」到「配方」</h1><div class="snap-meta"><span>2026 年 9 月 27 日</span><span>约 1 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/Prompt%E5%B7%A5%E7%A8%8B">Prompt工程</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%A4%A7%E6%A8%A1%E5%9E%8B">大模型</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E6%95%99%E7%A8%8B">教程</a></span></div><div class="article-body"><p>很多人以为 Prompt 工程是「念咒」——对着模型念一段神奇的咒语，然后祈祷它显灵。</p>
+<p>但炼丹房里不讲玄学，讲<strong>配方</strong>。</p>
+<h2>一味完整的药方</h2>
+<p>一个结构化的好 Prompt，通常包含五味药材：</p>
+<table>
+<thead>
+<tr>
+<th>药材</th>
+<th>作用</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>角色</td>
+<td>定义模型的身份</td>
+<td>你是一位资深后端工程师</td>
+</tr>
+<tr>
+<td>上下文</td>
+<td>提供背景信息</td>
+<td>我们的系统使用 PostgreSQL 16</td>
+</tr>
+<tr>
+<td>任务</td>
+<td>明确要做什么</td>
+<td>请审查下面这段 SQL</td>
+</tr>
+<tr>
+<td>约束</td>
+<td>划定边界</td>
+<td>只指出性能问题，不要改风格</td>
+</tr>
+<tr>
+<td>输出格式</td>
+<td>规定交付形态</td>
+<td>用表格输出，按严重程度排序</td>
+</tr>
+</tbody></table>
+<h2>一个反面例子</h2>
+<pre><code class="language-text hljs">帮我看看这段代码有没有问题。
+</code></pre>
+<p>模型收到这种 Prompt 时的心情，和炼丹炉收到一车没洗的药材时是一样的。</p>
+<h2>改造之后</h2>
+<pre><code class="language-text hljs">你是一位资深 Python 工程师。
+背景：这是一个处理订单数据的 ETL 脚本，每天凌晨运行，数据量约 100 万行。
+任务：审查下面这段代码。
+约束：只关注性能与正确性问题，不讨论命名风格。
+输出：按严重程度排序，每条给出修改建议。
+
+&lt;代码&gt;
+...
+&lt;/代码&gt;
+</code></pre>
+<h2>三条炼丹心得</h2>
+<ol>
+<li><strong>把模型当新人</strong>：你不写清楚的，它就自由发挥；</li>
+<li><strong>示例胜过描述</strong>：给一个输入输出样例，抵得上三百字说明；</li>
+<li><strong>迭代而非一次成丹</strong>：先跑一版，看输出，再调整配方。</li>
+</ol>
+<p>好丹都是试出来的，好 Prompt 也是。</p>
+</div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/14/">temperature 与 top_p：控制模型「胆子」的两个旋钮</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/12/">上下文窗口：模型的工作台有多大</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/10/">上下文工程：把注意力当预算来花</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/2">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</body>
+</html>

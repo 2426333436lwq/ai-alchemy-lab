@@ -1,0 +1,721 @@
+/* 公开页面视图：首页 / 文章详情 / 标签 / 关于 */
+(function () {
+  'use strict';
+
+  const Views = {};
+  const homeState = { page: 1, search: '' };
+
+  function articleCard(a) {
+    const cover = a.cover
+      ? '<a class="card-cover" href="#/article/' + a.id + '"><img src="' + a.cover + '" alt="' + Util.escapeHtml(a.title) + '" loading="lazy"></a>'
+      : '<a class="card-cover" href="#/article/' + a.id + '"><span class="cover-fallback">' + Util.escapeHtml((a.title || '丹')[0]) + '</span></a>';
+    return (
+      '<div class="card article-card">' + cover +
+      '<div class="card-body">' +
+      '<a class="card-title" href="#/article/' + a.id + '">' + Util.escapeHtml(a.title) + '</a>' +
+      '<p class="card-summary">' + Util.escapeHtml(a.summary || '') + '</p>' +
+      '<div class="card-meta"><span>' + Util.formatDate(a.created_at) + '</span><span>阅读 ' + (a.views || 0) + '</span></div>' +
+      '<div class="card-tags">' + Util.tagChips(a.tags) + '</div>' +
+      '</div></div>'
+    );
+  }
+
+  function renderList(root, list) {
+    if (!list.length) {
+      return '<div class="empty-box"><h2>炉中暂无丹药</h2><p>没有找到匹配的文章，换个关键词试试。</p></div>';
+    }
+    return '<div class="article-grid">' + list.map(articleCard).join('') + '</div>';
+  }
+
+  /* ---------------- 首页 ---------------- */
+
+  Views.home = async function (root) {
+    const s = (window.App && App.settings) || {};
+    root.innerHTML =
+      '<section class="hero">' +
+      '<h1>' + Util.escapeHtml(s.site_title || 'AI 炼丹房') + '</h1>' +
+      '<p>' + Util.escapeHtml(s.site_slogan || '数据是药材 · 算力是炉火 · 调参是火候') + '</p>' +
+      '</section>' +
+      '<div class="search-bar">' +
+      '<input id="search-input" class="input" type="search" placeholder="搜一搜丹方：标题 / 摘要 / 正文关键词…" value="' + Util.escapeHtml(homeState.search) + '">' +
+      '</div>' +
+      '<div id="article-list"></div>' +
+      '<div id="pagination" class="pagination"></div>';
+
+    const listEl = Util.$('#article-list', root);
+    const pagerEl = Util.$('#pagination', root);
+
+    async function load() {
+      Util.setLoading(listEl);
+      pagerEl.innerHTML = '';
+      try {
+        const pageSize = 9;
+        const result = await Api.listArticles({ page: homeState.page, pageSize: pageSize, search: homeState.search });
+        listEl.innerHTML = renderList(root, result.list);
+        const totalPages = Math.max(1, Math.ceil(result.total / pageSize));
+        if (totalPages > 1) {
+          pagerEl.innerHTML =
+            '<button class="btn btn-sm" id="prev-page" ' + (homeState.page <= 1 ? 'disabled' : '') + '>上一页</button>' +
+            '<span class="page-info">第 ' + homeState.page + ' / ' + totalPages + ' 页 · 共 ' + result.total + ' 篇</span>' +
+            '<button class="btn btn-sm" id="next-page" ' + (homeState.page >= totalPages ? 'disabled' : '') + '>下一页</button>';
+          const prev = Util.$('#prev-page', pagerEl);
+          const next = Util.$('#next-page', pagerEl);
+          if (prev) prev.addEventListener('click', function () { homeState.page -= 1; load(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+          if (next) next.addEventListener('click', function () { homeState.page += 1; load(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+        }
+      } catch (err) {
+        Util.setError(listEl, '文章列表加载失败', err.message || '请稍后重试');
+      }
+    }
+
+    const searchInput = Util.$('#search-input', root);
+    searchInput.addEventListener('input', Util.debounce(function () {
+      homeState.search = searchInput.value.trim();
+      homeState.page = 1;
+      load();
+    }, 450));
+
+    await load();
+  };
+
+  /* ---------------- 文章详情 ---------------- */
+
+  Views.article = async function (root, id) {
+    Util.setLoading(root, '丹药出炉中…');
+    let article;
+    try {
+      article = await Api.getArticle(id);
+    } catch (err) {
+      Util.setError(root, '文章加载失败', err.message || '');
+      return;
+    }
+    if (!article) {
+      Util.setError(root, '炉中无此丹', '这篇文章不存在，或尚未发布。');
+      return;
+    }
+
+    const siteName = (window.App && App.settings && App.settings.site_title) || 'AI 炼丹房';
+    const siteOrigin = (window.APP_CONFIG && APP_CONFIG.siteUrl) || location.origin;
+    Util.setPageMeta({
+      title: article.title + ' · ' + siteName,
+      description: (article.summary || article.title || '').slice(0, 160),
+      image: article.cover || '',
+      url: location.href,
+      canonical: siteOrigin + '/a/' + article.id + '/'
+    });
+    Api.incrementViews(article.id);
+
+    const coverHtml = article.cover
+      ? '<div class="detail-cover"><img src="' + article.cover + '" alt="' + Util.escapeHtml(article.title) + '"></div>'
+      : '';
+
+    root.innerHTML =
+      '<article class="article-detail">' + coverHtml +
+      '<h1 class="detail-title">' + Util.escapeHtml(article.title) + '</h1>' +
+      '<div class="detail-meta">' +
+      '<span>' + Util.formatDate(article.created_at) + '</span>' +
+      '<span>阅读 <span id="view-count">' + ((article.views || 0) + 1) + '</span></span>' +
+      '<span id="series-badge"></span>' +
+      '<span class="detail-tags">' + Util.tagChips(article.tags) + '</span>' +
+      '</div>' +
+      '<div id="article-content" class="article-body"></div>' +
+      '<div id="toc-box"></div>' +
+      '<div id="share-box" class="card share-box"></div>' +
+      '<div id="attachments-area"></div>' +
+      '<div id="series-nav"></div>' +
+      '<div id="related-box"></div>' +
+      '<div id="hot-box"></div>' +
+      '<div id="comment-box" class="card comment-box"></div>' +
+      '<div class="detail-actions"><a class="btn" href="#/">返回丹房</a></div>' +
+      '</article>';
+
+    const contentEl = Util.$('#article-content', root);
+    renderMarkdown(contentEl, article.content, { codeCopy: true });
+    setupReadingAssist(root, contentEl);
+
+    // 所属系列：徽章 + 系列内上一篇/下一篇
+    if (article.series_id) {
+      (async function () {
+        try {
+          const series = await Api.getSeries(article.series_id);
+          const list = await Api.listSeriesArticles(article.series_id);
+          if (series) {
+            const badge = Util.$('#series-badge', root);
+            if (badge) {
+              badge.innerHTML =
+                '<a class="series-badge" href="#/series/' + series.id + '">' +
+                '<span class="series-icon sm">' + Util.escapeHtml(series.icon || '') + '</span>' +
+                Util.escapeHtml(series.name) + '</a>';
+            }
+          }
+          const idx = list.findIndex(function (a) { return a.id === article.id; });
+          if (idx >= 0) {
+            const prev = idx > 0 ? list[idx - 1] : null;
+            const next = idx < list.length - 1 ? list[idx + 1] : null;
+            const nav = Util.$('#series-nav', root);
+            if (nav && (prev || next || series)) {
+              nav.innerHTML =
+                '<div class="card series-nav">' +
+                '<div class="series-nav-head">' +
+                (series ? '本系列：' + Util.escapeHtml(series.name) : '本系列') +
+                ' · 第 ' + (idx + 1) + ' / ' + list.length + ' 篇</div>' +
+                '<div class="series-nav-links">' +
+                (prev
+                  ? '<a class="series-nav-item" href="#/article/' + prev.id + '"><span class="sn-label">上一篇</span>' + Util.escapeHtml(prev.title) + '</a>'
+                  : '<span class="series-nav-item disabled"><span class="sn-label">上一篇</span>已是系列首篇</span>') +
+                (next
+                  ? '<a class="series-nav-item next" href="#/article/' + next.id + '"><span class="sn-label">下一篇</span>' + Util.escapeHtml(next.title) + '</a>'
+                  : '<span class="series-nav-item disabled next"><span class="sn-label">下一篇</span>已是系列末篇</span>') +
+                '</div>' +
+                (series ? '<a class="btn btn-sm" href="#/series/' + series.id + '">查看完整系列</a>' : '') +
+                '</div>';
+            }
+          }
+        } catch (e) { /* 系列信息加载失败不影响正文阅读 */ }
+      })();
+    }
+
+    // 附件区
+    try {
+      const files = await Api.listAttachments(article.id);
+      if (files.length) {
+        const area = Util.$('#attachments-area', root);
+        const session = await Util.getSession();
+        area.innerHTML =
+          '<div class="card attachments-box"><h3>本文附件</h3>' +
+          files.map(function (f, i) {
+            return (
+              '<div class="attachment-row">' +
+              '<svg class="attachment-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 1 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>' +
+              '<span class="attachment-name">' + Util.escapeHtml(f.name) + '</span>' +
+              '<span class="attachment-size">' + Util.formatSize(f.size) + '</span>' +
+              '<button class="btn btn-sm" data-idx="' + i + '">下载</button>' +
+              '</div>'
+            );
+          }).join('') +
+          (session ? '' : '<p class="form-hint" style="margin-top:12px">附件存放于云端存储，登录后即可下载。</p>') +
+          '</div>';
+
+        Util.$$('button[data-idx]', area).forEach(function (btn) {
+          btn.addEventListener('click', async function () {
+            const file = files[Number(btn.getAttribute('data-idx'))];
+            const sess = await Util.getSession();
+            if (!sess) {
+              Util.toast('附件下载需要登录，请先登录', 'info');
+              sessionStorage.setItem('redirectAfterLogin', '#/article/' + article.id);
+              location.hash = '#/login';
+              return;
+            }
+            btn.disabled = true;
+            btn.textContent = '获取中…';
+            try {
+              const url = await Api.downloadAttachment(file.path);
+              window.open(url, '_blank', 'noopener');
+            } catch (err) {
+              Util.toast(err.message || '获取下载链接失败', 'error');
+            } finally {
+              btn.disabled = false;
+              btn.textContent = '下载';
+            }
+          });
+        });
+      }
+    } catch (e) { /* 附件加载失败不影响正文阅读 */ }
+
+    renderShare(root, article);
+
+    try {
+      const related = await Api.relatedArticles(article, 3);
+      const box = Util.$('#related-box', root);
+      if (box && related.length) {
+        box.innerHTML =
+          '<h3 class="box-title">接着炼 · 相关丹方</h3>' +
+          '<div class="article-grid compact">' + related.map(articleCard).join('') + '</div>';
+      }
+    } catch (e) { /* 推荐失败不影响阅读 */ }
+
+    try {
+      const hot = await Api.hotArticles(5, article.id);
+      const box = Util.$('#hot-box', root);
+      if (box && hot.length) {
+        box.innerHTML =
+          '<div class="card hot-box">' +
+          '<h3 class="box-title">炉火最旺 · 热门丹方</h3>' +
+          '<ol class="hot-list">' +
+          hot.map(function (a, i) {
+            return '<li class="hot-item">' +
+              '<span class="hot-rank">' + (i + 1) + '</span>' +
+              '<a href="#/article/' + a.id + '">' + Util.escapeHtml(a.title) + '</a>' +
+              '<span class="hot-views">' + (a.views || 0) + ' 阅读</span>' +
+              '</li>';
+          }).join('') +
+          '</ol></div>';
+      }
+    } catch (e) { /* 热门榜失败不影响阅读 */ }
+
+    renderComments(root, article);
+  };
+
+  /* ---------------- 阅读辅助：目录 + 阅读进度条 ---------------- */
+
+  const ReadingAssist = { detach: function () {} };
+  window.ReadingAssist = ReadingAssist;
+
+  function setupReadingAssist(root, contentEl) {
+    ReadingAssist.detach();
+
+    const heads = Util.$$('h2, h3', contentEl);
+    const box = Util.$('#toc-box', root);
+    const bar = Util.$('#read-progress');
+    const barFill = Util.$('#read-progress-bar');
+    const showToc = heads.length >= 3;
+
+    if (box) {
+      if (!showToc) {
+        box.innerHTML = '';
+      } else {
+        box.innerHTML =
+          '<details class="toc-card" open>' +
+          '<summary class="toc-head">本文目录<span class="toc-count">' + heads.length + ' 节</span></summary>' +
+          '<ul class="toc-list">' +
+          heads.map(function (h) {
+            return '<li class="toc-item' + (h.tagName === 'H3' ? ' sub' : '') + '">' +
+              '<button type="button" class="toc-link" data-sec="' + h.id + '">' +
+              Util.escapeHtml(h.textContent) + '</button></li>';
+          }).join('') +
+          '</ul></details>';
+        Util.$$('.toc-link', box).forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const target = document.getElementById(btn.getAttribute('data-sec'));
+            if (!target) return;
+            const y = target.getBoundingClientRect().top + window.scrollY - 78;
+            window.scrollTo({ top: y, behavior: 'smooth' });
+          });
+        });
+      }
+    }
+
+    const links = showToc ? Util.$$('.toc-link', box) : [];
+    let ticking = false;
+
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(function () {
+        ticking = false;
+        const doc = document.documentElement;
+        const max = doc.scrollHeight - window.innerHeight;
+        const pct = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+        if (barFill) barFill.style.width = (pct * 100).toFixed(2) + '%';
+        if (bar) bar.classList.toggle('is-zero', pct < 0.005);
+
+        /* 当前小节：视口顶部下方 90px 之上、最靠下的那个标题 */
+        let currentId = heads.length ? heads[0].id : '';
+        for (let i = 0; i < heads.length; i++) {
+          if (heads[i].getBoundingClientRect().top <= 90) currentId = heads[i].id;
+          else break;
+        }
+        links.forEach(function (b) {
+          b.classList.toggle('active', b.getAttribute('data-sec') === currentId);
+        });
+      });
+    }
+
+    if (bar) bar.classList.remove('hidden');
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    onScroll();
+
+    ReadingAssist.detach = function () {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (bar) { bar.classList.add('hidden'); bar.classList.remove('is-zero'); }
+      if (barFill) barFill.style.width = '0%';
+      ReadingAssist.detach = function () {};
+    };
+  }
+
+  /* ---------------- 评论 ---------------- */
+
+  function timeAgo(iso) {
+    const t = new Date(iso).getTime();
+    if (Number.isNaN(t)) return '';
+    const diff = Date.now() - t;
+    const min = Math.floor(diff / 60000);
+    if (min < 1) return '刚刚';
+    if (min < 60) return min + ' 分钟前';
+    const h = Math.floor(min / 60);
+    if (h < 24) return h + ' 小时前';
+    const d = Math.floor(h / 24);
+    if (d < 30) return d + ' 天前';
+    return Util.formatDate(iso);
+  }
+
+  function commentItem(c, canDelete) {
+    const name = Util.escapeHtml(c.nickname || (c.user_email ? c.user_email.split('@')[0] : '道友'));
+    const initial = name.slice(0, 1).toUpperCase();
+    return '<li class="comment-item" data-id="' + c.id + '">' +
+      '<div class="comment-avatar">' + initial + '</div>' +
+      '<div class="comment-main">' +
+      '<div class="comment-head"><span class="comment-name">' + name + '</span>' +
+      '<span class="comment-time">' + timeAgo(c.created_at) + '</span></div>' +
+      '<div class="comment-text">' + Util.escapeHtml(c.content).replace(/\n/g, '<br>') + '</div>' +
+      '<div class="comment-ops">' +
+      '<button class="comment-op" data-act="reply">回复</button>' +
+      (c.status && c.status !== 'published' ? '<span class="comment-flag">已隐藏</span>' : '') +
+      (canDelete ? '<button class="comment-op danger" data-act="del">删除</button>' : '') +
+      '</div>' +
+      '</div></li>';
+  }
+
+  async function renderComments(root, article) {
+    const box = Util.$('#comment-box', root);
+    if (!box) return;
+
+    let session = null;
+    let isAdmin = false;
+    try {
+      session = await Util.getSession();
+      if (session) isAdmin = await Api.isAdmin();
+    } catch (e) { /* 未登录也能看评论 */ }
+
+    let comments = [];
+    try {
+      comments = await Api.listComments(article.id);
+    } catch (e) {
+      box.innerHTML = '<h3 class="box-title">丹友留言</h3><p class="form-hint">评论加载失败，稍后再来看看。</p>';
+      return;
+    }
+
+    /* 两级结构：顶层评论 + 其下的回复 */
+    const tops = comments.filter(function (c) { return !c.parent_id; });
+    const kids = comments.filter(function (c) { return c.parent_id; });
+    const myId = session && session.user ? session.user.id : '';
+
+    function listHtml() {
+      if (!comments.length) {
+        return '<p class="comment-empty">还没有人留言。第一炉丹方的第一句反馈，往往最有价值。</p>';
+      }
+      return '<ul class="comment-list">' + tops.map(function (c) {
+        const mine = c.user_id === myId;
+        const sub = kids.filter(function (k) { return k.parent_id === c.id; });
+        return commentItem(c, mine || isAdmin) +
+          (sub.length
+            ? '<ul class="comment-list sub">' + sub.map(function (k) {
+                return commentItem(k, k.user_id === myId || isAdmin);
+              }).join('') + '</ul>'
+            : '');
+      }).join('') + '</ul>';
+    }
+
+    function paint() {
+      box.innerHTML =
+        '<h3 class="box-title">丹友留言 · <span id="comment-count">' + comments.length + '</span> 条</h3>' +
+        '<div id="comment-form"></div>' +
+        '<div id="comment-list-area">' + listHtml() + '</div>';
+      bindForm();
+    }
+
+    function bindForm() {
+      const form = Util.$('#comment-form', box);
+      if (!form) return;
+      if (!session) {
+        form.innerHTML =
+          '<div class="comment-login">' +
+          '<span>登录后即可留言，邮箱注册只要十几秒。</span>' +
+          '<a class="btn btn-gold btn-sm" href="#/login" id="comment-login-btn">去登录</a>' +
+          '</div>';
+        Util.$('#comment-login-btn', form).addEventListener('click', function () {
+          sessionStorage.setItem('redirectAfterLogin', '#/article/' + article.id);
+        });
+        return;
+      }
+      form.innerHTML =
+        '<textarea id="comment-input" class="textarea comment-input" rows="3" maxlength="1000" ' +
+        'placeholder="说说你的看法、踩过的坑，或者想让我下一篇写什么…"></textarea>' +
+        '<div class="comment-form-foot">' +
+        '<span class="form-hint" id="comment-count-hint">还可以输入 1000 字</span>' +
+        '<span class="comment-form-btns">' +
+        '<button class="btn btn-sm" id="comment-cancel" style="display:none">取消回复</button>' +
+        '<button class="btn btn-gold btn-sm" id="comment-submit">发表留言</button>' +
+        '</span></div>';
+
+      const input = Util.$('#comment-input', form);
+      const hint = Util.$('#comment-count-hint', form);
+      const cancel = Util.$('#comment-cancel', form);
+      let replyTo = null;
+
+      input.addEventListener('input', function () {
+        hint.textContent = '还可以输入 ' + (1000 - input.value.length) + ' 字';
+      });
+
+      Util.$('#comment-submit', form).addEventListener('click', async function () {
+        const btn = this;
+        const text = input.value.trim();
+        if (text.length < 2) { Util.toast('至少写 2 个字', 'error'); return; }
+        btn.disabled = true;
+        btn.textContent = '发送中…';
+        try {
+          const row = await Api.addComment(article.id, text, replyTo, session.user);
+          comments.push(row);
+          input.value = '';
+          replyTo = null;
+          cancel.style.display = 'none';
+          paint();
+          Util.toast('留言已发表', 'success');
+        } catch (err) {
+          Util.toast(err.message || '发表失败', 'error');
+        } finally {
+          if (btn.isConnected) { btn.disabled = false; btn.textContent = '发表留言'; }
+        }
+      });
+
+      Util.$$('[data-act="reply"]', box).forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const li = btn.closest('.comment-item');
+          const id = Number(li.getAttribute('data-id'));
+          const c = comments.find(function (x) { return x.id === id; });
+          if (!c) return;
+          replyTo = id;
+          const nm = c.nickname || (c.user_email ? c.user_email.split('@')[0] : '道友');
+          input.value = '@' + nm + ' ';
+          input.focus();
+          cancel.style.display = '';
+          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+      });
+
+      cancel.addEventListener('click', function () {
+        replyTo = null;
+        input.value = '';
+        cancel.style.display = 'none';
+      });
+
+      Util.$$('[data-act="del"]', box).forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          const li = btn.closest('.comment-item');
+          const id = Number(li.getAttribute('data-id'));
+          if (!confirm('确定删除这条留言？')) return;
+          try {
+            await Api.deleteComment(id);
+            comments = comments.filter(function (x) { return x.id !== id && x.parent_id !== id; });
+            paint();
+            Util.toast('已删除', 'success');
+          } catch (err) {
+            Util.toast(err.message || '删除失败', 'error');
+          }
+        });
+      });
+    }
+
+    paint();
+  }
+
+  /* 分享区：复制链接 / 生成分享图 */
+  function renderShare(root, article) {
+    const box = Util.$('#share-box', root);
+    if (!box) return;
+    const link = location.origin + location.pathname + '#/article/' + article.id;
+    box.innerHTML =
+      '<div class="share-head">这炉丹还不错？带出去给人看看</div>' +
+      '<div class="share-actions">' +
+      '<button class="btn btn-sm" id="btn-copy-link">复制链接</button>' +
+      '<button class="btn btn-sm" id="btn-share-img">生成分享图</button>' +
+      '<button class="btn btn-sm" id="btn-copy-rich">复制标题 + 链接</button>' +
+      '</div>' +
+      '<div id="share-preview"></div>';
+
+    function done(ok, okMsg) {
+      Util.toast(ok ? okMsg : '复制失败，请手动选取复制', ok ? 'success' : 'error');
+    }
+
+    Util.$('#btn-copy-link', box).addEventListener('click', function () {
+      Util.copyText(link).then(function (ok) { done(ok, '链接已复制'); });
+    });
+
+    Util.$('#btn-copy-rich', box).addEventListener('click', function () {
+      const text = article.title + '\n' + (article.summary || '') + '\n' + link;
+      Util.copyText(text).then(function (ok) { done(ok, '已复制标题和链接'); });
+    });
+
+    Util.$('#btn-share-img', box).addEventListener('click', function () {
+      const btn = this;
+      btn.disabled = true;
+      btn.textContent = '绘制中…';
+      try {
+        const url = Util.buildShareCard({
+          siteName: (window.App && App.settings && App.settings.site_title) || 'AI 炼丹房',
+          title: article.title,
+          summary: article.summary,
+          date: Util.formatDate(article.created_at),
+          url: link
+        });
+        Util.$('#share-preview', box).innerHTML =
+          '<img class="share-img" src="' + url + '" alt="分享图预览">' +
+          '<div class="share-preview-actions">' +
+          '<a class="btn btn-sm" download="danfang-' + article.id + '.png" href="' + url + '">下载图片</a>' +
+          '<span class="form-hint">保存到本地后可直接发到群里 · 手机上长按图片也能保存</span>' +
+          '</div>';
+        Util.toast('分享图已生成', 'success');
+      } catch (e) {
+        Util.toast('生成分享图失败', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '生成分享图';
+      }
+    });
+  }
+
+  /* ---------------- 标签 ---------------- */
+
+  Views.tags = async function (root) {
+    Util.setLoading(root);
+    let tags;
+    try {
+      tags = await Api.listTags();
+    } catch (err) {
+      Util.setError(root, '标签加载失败', err.message || '');
+      return;
+    }
+    if (!tags.length) {
+      Util.setError(root, '尚无标签', '发布带标签的文章后会出现在这里。');
+      return;
+    }
+    root.innerHTML =
+      '<h1 class="section-title">丹方分类</h1>' +
+      '<div class="card tags-cloud">' +
+      tags.map(function (t) {
+        return '<a class="tag-cloud-chip" href="#/tag/' + encodeURIComponent(t.name) + '">' +
+          Util.escapeHtml(t.name) + '<span class="count">' + t.count + '</span></a>';
+      }).join('') +
+      '</div>';
+  };
+
+  Views.tag = async function (root, name) {
+    Util.setLoading(root);
+    let result;
+    try {
+      result = await Api.listArticles({ page: 1, pageSize: 100, tag: name });
+    } catch (err) {
+      Util.setError(root, '加载失败', err.message || '');
+      return;
+    }
+    root.innerHTML =
+      '<h1 class="section-title">标签 · ' + Util.escapeHtml(name) + '</h1>' +
+      renderList(root, result.list);
+  };
+
+  /* ---------------- 关于 ---------------- */
+
+  Views.about = async function (root) {
+    let stats = { articles: 0, views: 0, tags: 0 };
+    try { stats = await Api.siteStats(); } catch (e) { /* 统计失败不阻塞页面 */ }
+
+    const s = (window.App && App.settings) || {};
+    const DEFAULT_ABOUT =
+      '古人炼丹，求的是延年益寿；今人「炼丹」，求的是模型通灵。\n\n' +
+      '在大模型时代，每一个训练任务都像开炉炼丹：**数据是药材**，**算力是炉火**，**调参是火候**。火候到了，丹成；火候差了，炸炉。\n\n' +
+      '「AI 炼丹房」记录一个炼丹学徒的日常：\n\n' +
+      '- **炼丹笔记** —— 大模型训练、微调、推理部署的实践经验；\n' +
+      '- **药方研究** —— Prompt 工程、Agent 搭建、RAG 调优的方法论；\n' +
+      '- **炉具评测** —— 新模型、新框架、新工具的上手体验；\n' +
+      '- **炸炉实录** —— 踩坑记录，以及爬出坑的过程。\n\n' +
+      '丹成不必在我，火候自有记录。如果某篇笔记恰好帮你省下几个小时的 debug 时间，这炉丹，就算没白炼。';
+
+    root.innerHTML =
+      '<div class="card about-card">' +
+      '<h1>关于 ' + Util.escapeHtml(s.site_title || 'AI 炼丹房') + '</h1>' +
+      '<div class="article-body" id="about-content"></div>' +
+      '<div class="about-stats">' +
+      '<div class="stat-box"><div class="stat-num">' + stats.articles + '</div><div class="stat-label">已出丹药</div></div>' +
+      '<div class="stat-box"><div class="stat-num">' + stats.tags + '</div><div class="stat-label">丹方分类</div></div>' +
+      '<div class="stat-box"><div class="stat-num">' + stats.views + '</div><div class="stat-label">炉火热度</div></div>' +
+      '</div>' +
+      '<p class="muted small">本站文章数据存储于云端数据库，图片与附件存储于云端对象存储，通过邮箱登录认证保护站长写作权限。</p>' +
+      '</div>';
+
+    renderMarkdown(Util.$('#about-content', root), (s.about_content || '').trim() || DEFAULT_ABOUT);
+  };
+
+  /* ---------------- 系列 ---------------- */
+
+  Views.series = async function (root) {
+    Util.setLoading(root);
+    let series;
+    try {
+      series = await Api.listSeries();
+    } catch (err) {
+      Util.setError(root, '系列加载失败', err.message || '');
+      return;
+    }
+    if (!series.length) {
+      Util.setError(root, '尚无系列', '在管理后台创建系列后会出现在这里。');
+      return;
+    }
+    root.innerHTML =
+      '<h1 class="section-title">丹方系列</h1>' +
+      '<p class="section-sub">按主题成体系的系列笔记，每个系列都是一条可以一路学下来的线。</p>' +
+      '<div class="series-grid">' +
+      series.map(function (s) {
+        return '<a class="series-card" href="#/series/' + s.id + '">' +
+          '<span class="series-icon">' + Util.escapeHtml(s.icon || '丹') + '</span>' +
+          '<h2>' + Util.escapeHtml(s.name) + '</h2>' +
+          '<p class="series-summary">' + Util.escapeHtml(s.summary || '') + '</p>' +
+          '<div class="series-meta">' + (s.article_count || 0) + ' 篇' +
+          (s.article_count ? '' : ' · 待补内容') + '</div>' +
+          '</a>';
+      }).join('') +
+      '</div>';
+  };
+
+  Views.seriesDetail = async function (root, id) {
+    Util.setLoading(root, '正在展开这一系列…');
+    let series, list;
+    try {
+      const results = await Promise.all([Api.getSeries(id), Api.listSeriesArticles(id)]);
+      series = results[0];
+      list = results[1];
+    } catch (err) {
+      Util.setError(root, '系列加载失败', err.message || '');
+      return;
+    }
+    if (!series) {
+      Util.setError(root, '没有这个系列', '它可能已被删除或未发布。');
+      return;
+    }
+    document.title = series.name + ' · 系列 · ' + (App.settings.site_title || 'AI 炼丹房');
+
+    root.innerHTML =
+      '<div class="card series-header">' +
+      '<span class="series-icon lg">' + Util.escapeHtml(series.icon || '丹') + '</span>' +
+      '<div class="series-header-body">' +
+      '<h1>' + Util.escapeHtml(series.name) + '</h1>' +
+      '<p>' + Util.escapeHtml(series.summary || '') + '</p>' +
+      '<div class="series-meta">共 ' + list.length + ' 篇</div>' +
+      '</div></div>' +
+      (list.length
+        ? '<ol class="series-toc">' +
+          list.map(function (a, i) {
+            return '<li class="series-item">' +
+              '<span class="series-no">' + String(i + 1).padStart(2, '0') + '</span>' +
+              '<div class="series-item-body">' +
+              '<a class="series-item-title" href="#/article/' + a.id + '">' + Util.escapeHtml(a.title) + '</a>' +
+              '<p class="series-item-summary">' + Util.escapeHtml(a.summary || '') + '</p>' +
+              '<div class="series-item-meta">' + Util.formatDate(a.created_at) +
+              ' · 阅读 ' + (a.views || 0) + '</div>' +
+              '</div></li>';
+          }).join('') +
+          '</ol>'
+        : '<div class="empty-box"><h2>这一炉还没开</h2><p>该系列还没有文章，后续会陆续补充。</p></div>') +
+      '<div class="detail-actions"><a class="btn" href="#/series">全部系列</a>' +
+      '<a class="btn" href="#/">返回丹房</a></div>';
+  };
+
+  /* ---------------- 404 ---------------- */
+
+  Views.notFound = function (root) {
+    Util.setError(root, '迷路了', '你访问的页面不存在，回丹房坐坐吧。');
+  };
+
+  window.Views = Views;
+})();

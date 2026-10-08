@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>通义千问 Qwen：货架最宽的那家铺子 · AI 炼丹房</title>
+<meta name="description" content="别家是一家精品店，Qwen 是一家仓储超市：从闭源旗舰 Max 到开源可自拉的 35B 小 MoE，从文本到语音、视频、语音识别全线开放，还能在百炼上直接托管 LoRA 微调产物。这篇讲它怎么逛，以及哪几样东西别错过。">
+<meta name="keywords" content="炉具评测,模型选型,通义千问,Qwen,阿里云百炼,成本优化">
+<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/23/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="通义千问 Qwen：货架最宽的那家铺子 · AI 炼丹房">
+<meta property="og:description" content="别家是一家精品店，Qwen 是一家仓储超市：从闭源旗舰 Max 到开源可自拉的 35B 小 MoE，从文本到语音、视频、语音识别全线开放，还能在百炼上直接托管 LoRA 微调产物。这篇讲它怎么逛，以及哪几样东西别错过。">
+<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/23/">
+<meta property="og:site_name" content="AI 炼丹房">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="通义千问 Qwen：货架最宽的那家铺子 · AI 炼丹房">
+<meta name="twitter:description" content="别家是一家精品店，Qwen 是一家仓储超市：从闭源旗舰 Max 到开源可自拉的 35B 小 MoE，从文本到语音、视频、语音识别全线开放，还能在百炼上直接托管 LoRA 微调产物。这篇讲它怎么逛，以及哪几样东西别错过。">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"通义千问 Qwen：货架最宽的那家铺子 · AI 炼丹房","description":"别家是一家精品店，Qwen 是一家仓储超市：从闭源旗舰 Max 到开源可自拉的 35B 小 MoE，从文本到语音、视频、语音识别全线开放，还能在百炼上直接托管 LoRA 微调产物。这篇讲它怎么逛，以及哪几样东西别错过。","datePublished":"2026-09-27T16:21:16+08:00","dateModified":"2026-10-06T23:11:15.307102+08:00","keywords":"炉具评测,模型选型,通义千问,Qwen,阿里云百炼,成本优化","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/23/"}}</script>
+<style>
+body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
+</head>
+<body>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/23">进入完整站点</a></div></div>
+<div class="snap-wrap"><h1 class="snap-title">通义千问 Qwen：货架最宽的那家铺子</h1><div class="snap-meta"><span>2026 年 9 月 27 日</span><span>约 11 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E7%82%89%E5%85%B7%E8%AF%84%E6%B5%8B">炉具评测</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E6%A8%A1%E5%9E%8B%E9%80%89%E5%9E%8B">模型选型</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E9%80%9A%E4%B9%89%E5%8D%83%E9%97%AE">通义千问</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/Qwen">Qwen</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E9%98%BF%E9%87%8C%E4%BA%91%E7%99%BE%E7%82%BC">阿里云百炼</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E6%88%90%E6%9C%AC%E4%BC%98%E5%8C%96">成本优化</a></span></div><div class="article-body"><p>逛完前面几家，你会发现一个规律：<strong>它们的打法都是「一个旗舰打天下」</strong>——一个最强的模型撑门面，往下切几档。</p>
+<p>但通义千问不是这个路数。它像一家<strong>仓储超市</strong>。</p>
+<p>货架从几毛钱的小件一路排到整套餐。因为阿里卖的不只是「模型」，而是<strong>一整个模型层</strong>：Max / Plus / Flash 三档闭源商用型号，加上一大批可直接拉取权重的开源型号，外加语音识别、语音合成、图片理解、视频生成，全部在同一个账号体系里。</p>
+<p>所以这一篇的重点不是「Qwen 哪个最强」，而是：<strong>这家店该怎么逛。</strong></p>
+<h2>先分清楚两个货架</h2>
+<p>这是最容易搞混的一点。<strong>Qwen 同时有两个产品线</strong>，它们的价格体系完全不同：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>闭源商用货架</th>
+<th>开源权重货架</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>型号命名</td>
+<td><code>Qwen3.8-Max</code>、<code>Qwen3.8-Flash</code>、<code>Qwen3.7-Plus</code></td>
+<td><code>qwen3.5-397b-a17b</code>、<code>qwen3.5-35b-a3b</code>、<code>qwen3.5-27b</code></td>
+</tr>
+<tr>
+<td>拿得到权重吗</td>
+<td>拿不到</td>
+<td><strong>能自己下载部署</strong></td>
+</tr>
+<tr>
+<td>计价币种</td>
+<td>人民币（¥/百万 token）</td>
+<td>国际站美元（$/百万 token）</td>
+</tr>
+<tr>
+<td>适合谁</td>
+<td>直接用、不想运维</td>
+<td>要微调、要私有化、量大到自建更划算</td>
+</tr>
+</tbody></table>
+<p><strong>混为一谈的话，你的成本估算会全错。</strong></p>
+<h2>货架 A：闭源商用型号（核对时间：2026 年 10 月初）</h2>
+<p>单位：人民币元 / 百万 token。以下为阿里云官方页面标注的<strong>原价</strong>，实际常有折扣与资源包，<strong>按下单前控制台为准</strong>。</p>
+<table>
+<thead>
+<tr>
+<th>型号</th>
+<th>输入</th>
+<th>输出</th>
+<th>缓存命中</th>
+<th>Batch 输入/输出</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Qwen3.8-Max</td>
+<td>¥12</td>
+<td>¥36</td>
+<td>¥1.5</td>
+<td>¥6 / ¥18</td>
+</tr>
+<tr>
+<td>Qwen3.8-Flash</td>
+<td>¥0.8</td>
+<td>¥2.7</td>
+<td>¥0.1</td>
+<td>¥0.4 / ¥1.35</td>
+</tr>
+<tr>
+<td>Qwen3.7-Plus（≤256K）</td>
+<td>¥2.4</td>
+<td>¥9.6</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Qwen3.7-Plus（256K–1M）</td>
+<td>¥7.2</td>
+<td>¥28.8</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody></table>
+<p>只看最便宜的 Qwen3.8-Flash：<strong>¥0.8 / ¥2.7</strong>，换算成美元约 <strong>$0.11 / $0.39</strong>。这个价格和 Gemini 2.5 Flash-Lite（$0.10/$0.40）几乎是一模一样的——<strong>国产的最低档已经和国际最低档对齐了。</strong></p>
+<h3>一个「显式缓存」的小门道</h3>
+<p>Qwen3.8-Max 还有一个别家不太常见的计费项，值得单独讲：</p>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>价格</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>普通输入</td>
+<td>¥12/M</td>
+</tr>
+<tr>
+<td><strong>显式缓存创建</strong></td>
+<td><strong>¥15/M</strong></td>
+</tr>
+<tr>
+<td><strong>显式缓存命中</strong></td>
+<td><strong>¥1/M</strong></td>
+</tr>
+</tbody></table>
+<p>意思是：<strong>你可以主动花 ¥15/M 把一段前缀「钉」进缓存，之后每次读它只要 ¥1/M。</strong></p>
+<p>划算吗？算一下。假设同一段前缀要用 N 次：</p>
+<ul>
+<li>不用缓存：<code>N × ¥12</code></li>
+<li>用显式缓存：<code>¥15 + N × ¥1</code></li>
+</ul>
+<p>两者相等时 N ≈ 1.36，也就是说——<strong>同一个前缀只要重复用到第 2 次，显式缓存就开始赚钱了。</strong></p>
+<p>这个玩法特别适合「<strong>一份超长的产品文档 / 规范，配 N 个不同用户提问</strong>」这种场景。别忘了打开。</p>
+<h2>货架 B：开源权重型号（国际站美元报价）</h2>
+<p>单位：美元 / 百万 token，摘录自阿里云百炼官方定价页（Global 部署）。</p>
+<table>
+<thead>
+<tr>
+<th>型号</th>
+<th>输入 ≤128K</th>
+<th>输出 ≤128K</th>
+<th>输入 128K–256K</th>
+<th>输出 128K–256K</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>qwen3.5-397b-a17b</td>
+<td>0.172</td>
+<td>1.032</td>
+<td>0.43</td>
+<td>2.58</td>
+</tr>
+<tr>
+<td>qwen3.5-122b-a10b</td>
+<td>0.115</td>
+<td>0.917</td>
+<td>0.287</td>
+<td>2.294</td>
+</tr>
+<tr>
+<td>qwen3.5-27b</td>
+<td>0.086</td>
+<td>0.688</td>
+<td>0.258</td>
+<td>2.064</td>
+</tr>
+<tr>
+<td>qwen3.5-35b-a3b</td>
+<td>0.057</td>
+<td>0.459</td>
+<td>0.229</td>
+<td>1.835</td>
+</tr>
+</tbody></table>
+<p>注意那个命名里的规律：<strong><code>397b-a17b</code> 的意思是「总参数 3970 亿、激活 170 亿」</strong>，<code>35b-a3b</code> 就是「总 350 亿、激活 30 亿」——这是 MoE（混合专家）的写法，和第 5 篇讲的 DeepSeek、第 7 篇讲的 GLM 是同一套思路：<strong>总参数大，但每次只唤醒一小部分，所以用起来便宜。</strong></p>
+<p>看这张表最有用的一个角度是：<strong><code>qwen3.5-35b-a3b</code> 的输入价 $0.057</strong>，是我们这一系列里最便宜的一档之一——而它确实是一个可以自己下载、跑在几张消费级显卡上的小模型。</p>
+<h2>Qwen 真正独占的优势：模态全家桶</h2>
+<p>别的厂商做多模态，通常是「主模型 + 几个附属型号」。Qwen 做的是<strong>一整条流水线</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th>型号</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>全模态理解</td>
+<td><strong>Qwen3.5-Omni</strong>（Flash / Plus）</td>
+<td>文本、图片、音频、音视频理解与交互，同一个模型</td>
+</tr>
+<tr>
+<td>图片 / 视频理解</td>
+<td>Qwen3-VL 系列</td>
+<td>看图、读图表</td>
+</tr>
+<tr>
+<td>语音合成</td>
+<td>Qwen3-TTS-Flash</td>
+<td>官方称 17 种拟人音色，支持同音色多语言输出</td>
+</tr>
+<tr>
+<td>语音识别</td>
+<td>Fun-ASR-Realtime</td>
+<td>实时 ASR，带 ITN 规范化、语气词过滤</td>
+</tr>
+<tr>
+<td>视频生成</td>
+<td>万相 Wan2.7</td>
+<td>支持图生视频、参考生视频、音视频混合参考</td>
+</tr>
+</tbody></table>
+<p>这意味着一件事：<strong>如果你在做一个「带语音的产品」（比如电话客服、语音助手、有声内容生成），Qwen 是唯一能让你在一家厂商内走完全链路的选择。</strong></p>
+<p>换个今天都还是痛点的例子：你要做一个「用户对着 App 说话 → 转成文字 → 理解意图 → 用同一个音色回答」的功能。在其他家，你要拼两家甚至三家的服务，中间还要处理鉴权、计费、日志对齐；在 Qwen 这边，<strong>同一个 key，同一份账单。</strong></p>
+<p>这份「整合度」在日常 pilot 阶段的价值，比单点的性能差距大得多。</p>
+<h2>上手：一个账号逛完两个货架</h2>
+<p>阿里云百炼的 API 是 OpenAI 协议兼容的（地域不同 endpoint 会变，<strong>国际站请用控制台给出的实际地址</strong>）：</p>
+<pre><code class="language-python hljs">from openai import OpenAI
+
+client = OpenAI(
+    api_key=DASHSCOPE_API_KEY,
+    base_url=&quot;https://dashscope.aliyuncs.com/compatible-mode/v1&quot;,
+)
+
+resp = client.chat.completions.create(
+    model=&quot;qwen3.8-flash&quot;,        # 便宜档：¥0.8 / ¥2.7 每百万 token
+    # model=&quot;qwen3.5-397b-a17b&quot;,  # 开源货架那个大家伙：$0.172 / $1.032
+    messages=[
+        {&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: SYSTEM},   # 想要省钱就用显式缓存钉住这段
+        {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: question},
+    ],
+)
+print(resp.choices[0].message.content)
+</code></pre>
+<p>如果你已经读到第三层学过了微调（第 9、10 篇），这里还有一条很顺的衔接：<strong>百炼支持直接部署你自己做好的 LoRA 微调产物</strong>（通过 token 部署，指定 <code>plan=lora</code>）。也就是说：</p>
+<blockquote>
+<p>你在本地或平台上用 LoRA 微调出一个「说话很像你们公司」的版本，<strong>训练完不用自己搭推理服务</strong>，直接托管上去就能有稳定的 API 地址。</p>
+</blockquote>
+<p>这中间省掉的运维成本，对大多数小团队来说是实实在在的一笔钱。</p>
+<p>另外还有 <strong>PTU / 吞吐量预留（Throughput Reservation）</strong> 这一档：给定的 TPM 额度按天/按月包月，<strong>适合那种「必须保证高峰期不被限流」的生产场景</strong>。清单里也包括 DeepSeek、GLM、Kimi 等其他厂商的型号——<strong>阿里云实际上在做国产模型的「集成商」</strong>，这一点很值得注意。</p>
+<h2>横向比一下：Qwen 的位置</h2>
+<table>
+<thead>
+<tr>
+<th>对比</th>
+<th>Qwen</th>
+<th>对方</th>
+<th>怎么选</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>vs DeepSeek</strong></td>
+<td>Qwen3.8-Flash ≈ $0.11/$0.39</td>
+<td>Flash 闲时 $0.15/$0.60</td>
+<td>最低档基本打平。DeepSeek 输出上限 384K 更慷慨，Qwen 模态全得多</td>
+</tr>
+<tr>
+<td><strong>vs Gemini 2.5 Flash-Lite</strong></td>
+<td>Qwen3.8-Flash ≈ $0.11/$0.39</td>
+<td>$0.10/$0.40</td>
+<td>几乎完全打平，看生态与合规</td>
+</tr>
+<tr>
+<td><strong>vs GPT-6 Luna</strong></td>
+<td>Qwen3.8-Flash ≈ $0.11</td>
+<td>$0.10</td>
+<td>价格同一档次；看你在不在 OpenAI 生态里</td>
+</tr>
+<tr>
+<td><strong>vs GLM-5.3-Flash</strong></td>
+<td>Qwen3.5-35b-a3b $0.057/$0.459</td>
+<td>$0.15/$0.50</td>
+<td>Qwen 输入更便宜，GLM 能吃视频文件</td>
+</tr>
+<tr>
+<td><strong>vs Claude Haiku 4.5</strong></td>
+<td>Qwen3.8-Flash ≈ $0.11/$0.39</td>
+<td>$1/$5</td>
+<td>差近一个数量级；但要稳定性 / 长文档就别硬替</td>
+</tr>
+</tbody></table>
+<p>一句话：<strong>Qwen 是「国内落地 + 模态多 + 想连微调一起做完」的默认答案。</strong></p>
+<h2>什么时候别逛这家店</h2>
+<ul>
+<li><strong>你的题目需要最顶级的推理能力</strong> → Max 档的存在是为了给国内场景一个强选项，但把它和国际顶格档横向比排行榜，请在你自己的数据上做，别只看宣传材料。</li>
+<li><strong>你主要在海外、且要有最优的选择自由度</strong> → 开源货架是国际站报价（美元），看不到国内价格体系；这种情况直接用 DeepSeek / GLM 的国际版价格比较更直观。</li>
+<li><strong>你的 Prompt 极其依赖某个海外模型的「说话方式」</strong> → 换模型的迁移成本在第 1 篇讲过，别低估。</li>
+</ul>
+<h2>炼丹小结</h2>
+<ol>
+<li>Qwen 是<strong>两个货架</strong>：闭源商用（人民币计价）与开源权重（国际站美元计价），<strong>混着算钱一定算错</strong>。</li>
+<li>最低档 <strong>Qwen3.8-Flash ≈ $0.11/$0.39</strong>，已经和国际最低档完全对齐。</li>
+<li><strong>显式缓存</strong>是一个被低估的功能：创建 ¥15/M、命中 ¥1/M，<strong>同一个前缀用到第 2 次就开始回本</strong>。</li>
+<li>命名规则 <code>397b-a17b</code> = 总参数 3970 亿 / 激活 170 亿，这是 MoE 的标准写法，看懂它就能自己估推理成本。</li>
+<li><strong>全模态是 Qwen 真正的护城河</strong>：Omni 理解 + TTS + ASR + 视频生成在同一账号下，语音类产品可以一条链路走完。</li>
+<li>顺手记一下：百炼可以直接托管 <strong>LoRA 微调产物</strong>，还能做 <strong>PTU 吞吐量预留</strong>，适合害怕被限流的生产场景。</li>
+</ol>
+<p>丹成不必在我，火候自有记录。</p>
+<p>下一篇讲 <strong>GLM 与智谱</strong>——国产阵营里「合规最稳 + 开源最彻底」的那一家，也是今年干了一件很反直觉的事：<strong>它涨价了</strong>。</p>
+</div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/18/">模型选型总纲：给每个工种请对师傅</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/19/">GPT 家族：菜单铺得最全，账单也最会骗人</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/20/">Claude 家族：记性最好，且长上下文不加价</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/23">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</body>
+</html>

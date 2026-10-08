@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上下文窗口：模型的工作台有多大 · AI 炼丹房</title>
+<meta name="description" content="厂商宣传的「100 万 token 上下文」不代表你能用满 100 万。用办公桌的比喻讲清楚窗口是什么、为什么聊久了它会忘事、为什么关键事实放在中间会被忽略，以及四条马上能用的摆放技巧。">
+<meta name="keywords" content="药方研究,上下文,大模型,教程">
+<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/12/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="上下文窗口：模型的工作台有多大 · AI 炼丹房">
+<meta property="og:description" content="厂商宣传的「100 万 token 上下文」不代表你能用满 100 万。用办公桌的比喻讲清楚窗口是什么、为什么聊久了它会忘事、为什么关键事实放在中间会被忽略，以及四条马上能用的摆放技巧。">
+<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/12/">
+<meta property="og:site_name" content="AI 炼丹房">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="上下文窗口：模型的工作台有多大 · AI 炼丹房">
+<meta name="twitter:description" content="厂商宣传的「100 万 token 上下文」不代表你能用满 100 万。用办公桌的比喻讲清楚窗口是什么、为什么聊久了它会忘事、为什么关键事实放在中间会被忽略，以及四条马上能用的摆放技巧。">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"上下文窗口：模型的工作台有多大 · AI 炼丹房","description":"厂商宣传的「100 万 token 上下文」不代表你能用满 100 万。用办公桌的比喻讲清楚窗口是什么、为什么聊久了它会忘事、为什么关键事实放在中间会被忽略，以及四条马上能用的摆放技巧。","datePublished":"2026-09-27T16:24:00+08:00","dateModified":"2026-09-27T16:24:00+08:00","keywords":"药方研究,上下文,大模型,教程","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/12/"}}</script>
+<style>
+body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
+</head>
+<body>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/12">进入完整站点</a></div></div>
+<div class="snap-wrap"><h1 class="snap-title">上下文窗口：模型的工作台有多大</h1><div class="snap-meta"><span>2026 年 9 月 27 日</span><span>约 5 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E8%8D%AF%E6%96%B9%E7%A0%94%E7%A9%B6">药方研究</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E4%B8%8A%E4%B8%8B%E6%96%87">上下文</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%A4%A7%E6%A8%A1%E5%9E%8B">大模型</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E6%95%99%E7%A8%8B">教程</a></span></div><div class="article-body"><p>你有没有遇到过：和模型聊了二三十轮，它突然<strong>忘了你开头说的需求</strong>，或者开始自相矛盾？</p>
+<p>不是它记性差。是它的<strong>工作台</strong>就这么大。</p>
+<h2>一个比喻：办公桌</h2>
+<p>想象模型坐在一张办公桌前工作：</p>
+<ul>
+<li>它<strong>只能看见摊在桌面上的东西</strong>；</li>
+<li>桌面<strong>面积有限</strong>——这就是<strong>上下文窗口</strong>；</li>
+<li>你的问题、它的回答、你塞给它的资料、系统提示，全都要<strong>占桌面</strong>；</li>
+<li>桌面堆不下了，就得<strong>把最早放上去的东西拿走</strong>（或者压缩成一张便签）。</li>
+</ul>
+<p><strong>关键的一点</strong>：它每一次「猜下一个字」，看的就是桌上这堆东西。桌上看不见的，对它来说<strong>等于不存在</strong>。</p>
+<h2>窗口里都装了些什么</h2>
+<p>一次对话中，上下文窗口大致这么分配：</p>
+<table>
+<thead>
+<tr>
+<th>内容</th>
+<th>例子</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>系统提示</td>
+<td>「你是一个资深 Python 工程师……」</td>
+</tr>
+<tr>
+<td>你塞的资料</td>
+<td>RAG 检索回来的文档、上传的文件</td>
+</tr>
+<tr>
+<td>历史对话</td>
+<td>前面所有轮次的问答</td>
+</tr>
+<tr>
+<td>当前问题</td>
+<td>你刚发的这句话</td>
+</tr>
+<tr>
+<td>它的回答</td>
+<td>正在一个字一个字往外吐的部分</td>
+</tr>
+</tbody></table>
+<p><strong>全都按 token 计费、全都占地方</strong>（第一层第 2 篇讲过 token）。</p>
+<p>所以，「支持 12.8 万 token」意味着<strong>这五样东西加起来</strong>不能超过 12.8 万——不是你能聊 12.8 万字的天。</p>
+<h2>三个反直觉的真相</h2>
+<h3>真相一：聊久了它会「忘」，而且不是从最早的开始忘</h3>
+<p>很多人的直觉是「先进先出」：最早的被挤掉。实际上更麻烦——</p>
+<p>研究表明模型对上下文的利用是<strong>不均匀的</strong>：</p>
+<ul>
+<li><strong>开头和结尾</strong>的信息，它利用得最好；</li>
+<li><strong>中间</strong>的信息，容易被忽略。</li>
+</ul>
+<p>这就是著名的 <strong>Lost in the Middle（迷失在中间）</strong> 现象——一条 U 型曲线。</p>
+<blockquote>
+<p><strong>实用结论</strong>：重要信息<strong>别放在一大段文字的正中间</strong>。放开头，或者放结尾。</p>
+</blockquote>
+<h3>真相二：塞得越满，它可能越笨</h3>
+<p>直觉上「给的资料越多越准」。实测是反的：<strong>随着上下文变长，所有模型的准确率都会下降</strong>，在远没到标称上限时就已经开始明显衰减。</p>
+<p>原因很朴素：<strong>注意力是有限的资源</strong>（第一层说过，它是逐字猜的）。桌上摊了 100 份材料，每一份分到的注意力就薄了，噪声还变多了。</p>
+<blockquote>
+<p><strong>实用结论</strong>：RAG 别贪多。检索回 <strong>3～5 段真正相关的</strong>，比塞 20 段「可能相关」的效果好得多——而且更便宜。</p>
+</blockquote>
+<h3>真相三：标称 100 万 ≠ 你能用 100 万</h3>
+<p>厂商标的「100 万 token 上下文」是<strong>硬上限</strong>（超过就直接报错），不是<strong>推荐工作区间</strong>。</p>
+<p>业内实测（Chroma Research 对 18 个前沿模型的测试）显示，在远未接近标称上限的长度上，检索准确率就已经开始下滑。</p>
+<blockquote>
+<p><strong>实用结论</strong>：把标称数字打个折来用。<strong>能用 20 万解决的事，别铺到 80 万。</strong></p>
+</blockquote>
+<h2>四条马上能用的摆放技巧</h2>
+<p><strong>1. 重要的放两头，别放中间。</strong></p>
+<pre><code class="language-text hljs">✅ 把关键约束写在开头，并在结尾再强调一次
+❌ 把关键约束埋在第 3 页文档的正中间
+</code></pre>
+<p><strong>2. 长对话定期总结。</strong></p>
+<p>聊到十几轮，让模型把前面的内容压缩成一段小结，用小结替换掉原始历史：</p>
+<pre><code class="language-text hljs">请把我们之前的对话压缩成一段 200 字以内的摘要，
+保留：已确认的决策、待办事项、以及我提过的所有约束条件。
+</code></pre>
+<p><strong>3. 稳定的内容放前面，变动的内容放后面。</strong></p>
+<p>系统提示、固定的资料放前面——这不仅符合「开头利用得好」，还能<strong>命中 prompt caching</strong>（相同前缀不用重算，省钱又提速）。</p>
+<p><strong>4. 别指望「塞进去它就会看」。</strong></p>
+<p>很多人把 5 万字的文档丢进去，然后抱怨它没读到某一条。<strong>它看了，只是没记住。</strong> 长文档一定要走 RAG 切成块检索，别整本塞。</p>
+<h2>遇到「窗口不够用」怎么办</h2>
+<table>
+<thead>
+<tr>
+<th>症状</th>
+<th>解法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>对话太长，早期内容被挤掉</td>
+<td>定期总结压缩历史</td>
+</tr>
+<tr>
+<td>资料太多塞不下</td>
+<td>走 RAG 检索，只放最相关的几段</td>
+</tr>
+<tr>
+<td>文档本身就超长</td>
+<td>分段处理 + 让模型逐段总结，再对总结提问</td>
+</tr>
+<tr>
+<td>任务本身就要跨很多轮</td>
+<td>把状态写到文件里（下一层的「上下文工程」会讲）</td>
+</tr>
+</tbody></table>
+<h2>炼丹小结</h2>
+<ol>
+<li>上下文窗口 = 模型的<strong>办公桌</strong>，桌上看不见的等于不存在；</li>
+<li>系统提示 + 资料 + 历史 + 问题 + 回答，<strong>全都占地方、都按 token 算钱</strong>；</li>
+<li><strong>开头和结尾利用得最好，中间容易被忽略</strong>——关键内容放两头；</li>
+<li><strong>塞得越满可能越笨</strong>——RAG 检索 3～5 段就够，别贪；</li>
+<li>标称 100 万是硬上限，不是推荐值，<strong>打折扣用</strong>。</li>
+</ol>
+<p>理解了窗口，你就明白了为什么「把资料全塞进去」是个昂贵的错误。</p>
+<p>下一层进阶篇《上下文工程》，会讲怎么把这张桌子当成<strong>预算</strong>来精打细算——那是第二层最重要的一篇。</p>
+<p>丹成不必在我，火候自有记录。</p>
+</div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/2/">Prompt 工程入门：从「念咒」到「配方」</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/14/">temperature 与 top_p：控制模型「胆子」的两个旋钮</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/10/">上下文工程：把注意力当预算来花</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/12">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</body>
+</html>
