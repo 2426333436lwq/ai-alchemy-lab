@@ -1918,3 +1918,9 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
 }
 
 
+
+/* 图片灯箱 */
+.lightbox { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.88); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; cursor: zoom-out; animation: lb-fade .18s ease; }
+.lightbox img { max-width: 95vw; max-height: 88vh; object-fit: contain; border-radius: 6px; box-shadow: 0 8px 40px rgba(0,0,0,.5); }
+.lightbox-cap { color: #ccc; margin-top: 14px; font-size: 14px; text-align: center; max-width: 80vw; }
+@keyframes lb-fade { from { opacity: 0; } to { opacity: 1; } }

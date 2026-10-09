@@ -78,5 +78,34 @@
         wrap.appendChild(btn);
       });
     }
+
+    /* 图片灯箱：点图放大 */
+    Util.$$('img', container).forEach(function (img) {
+      img.style.cursor = 'zoom-in';
+      img.addEventListener('click', function () {
+        openLightbox(img.src, img.alt || '');
+      });
+    });
   };
+
+  /* 轻量灯箱：单例，点遮罩或 Esc 关闭 */
+  let lightboxEl = null;
+  function openLightbox(src, alt) {
+    closeLightbox();
+    lightboxEl = document.createElement('div');
+    lightboxEl.className = 'lightbox';
+    lightboxEl.innerHTML =
+      '<img src="' + src + '" alt="' + (alt || '').replace(/"/g,'&quot;') + '">' +
+      (alt ? '<p class="lightbox-cap">' + alt + '</p>' : '');
+    lightboxEl.addEventListener('click', closeLightbox);
+    document.body.appendChild(lightboxEl);
+    document.body.style.overflow = 'hidden';
+  }
+  function closeLightbox() {
+    if (lightboxEl) { lightboxEl.remove(); lightboxEl = null; }
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeLightbox();
+  });
 })();
