@@ -5,6 +5,7 @@
   const App = {};
   let adminFlag = false; // 缓存站长身份，控制导航可见性
   let ownerFlag = false; // 是否超级管理员（站点所有者）
+  let lastRouteKey = null; // 上一次路由，用于判断是否需要把滚动位置归零
 
   App.isOwner = function () { return !!ownerFlag; };
 
@@ -46,11 +47,22 @@
   async function route() {
     const parts = parseHash();
     const root = mainEl();
-    /* 离开文章页时卸掉目录高亮与进度条的滚动监听 */
+    /* 离开文章页时卸掉目录高亮与进度条的滚动监听（必须在滚动重置之前，
+       否则 detach 里算进度时拿到的已经是归零后的 scrollY） */
     if (window.ReadingAssist) ReadingAssist.detach();
+
+    /* 换页必须回到顶部：否则新页面会继承上一页的滚动位置，
+       表现为「打开新文章却停在半中间」+ 阅读进度被写成上一页的位置 */
+    const routeKey = parts.join('/');
+    if (routeKey !== lastRouteKey) {
+      lastRouteKey = routeKey;
+      window.scrollTo(0, 0);
+    }
+
     document.title = App.settings.site_title || 'AI 炼丹房';
     setActiveNav(parts);
     updateAdminEntries(parts);
+    App.updateFavBadge();
     if (window.Theme) Theme.syncRoute(parts);
 
     if (window.CLOUD_SDK_MISSING) {
@@ -73,6 +85,8 @@
         await Views.series(root);
       } else if (parts[0] === 'about') {
         await Views.about(root);
+      } else if (parts[0] === 'bookmarks') {
+        await Views.bookmarks(root);
       } else if (parts[0] === 'login') {
         await Auth.viewLogin(root);
       } else if (parts[0] === 'admin' && parts[1] === 'new') {
@@ -158,6 +172,16 @@
     updateAdminEntries(parseHash());
   };
 
+  /* 导航栏「收藏」角标：展示本地收藏数量 */
+  App.updateFavBadge = function () {
+    const badge = Util.$('#nav-fav-count');
+    if (!badge) return;
+    let n = 0;
+    try { n = Util.Favorites.count(); } catch (e) { n = 0; }
+    badge.textContent = n > 99 ? '99+' : String(n);
+    badge.classList.toggle('hidden', n === 0);
+  };
+
   /* ---------------- 启动 ---------------- */
 
   /* PWA：注册 Service Worker（离线可用）。失败静默，不影响主流程 */
@@ -169,16 +193,55 @@
     });
   }
 
+  /* 回到顶部：下滑超过约一屏后出现，点击平滑回顶 */
+  function setupBackToTop() {
+    const btn = Util.$('#back-to-top');
+    if (!btn) return;
+
+    /* 统一取值：页面缩放/惯性滚动时 window.scrollY 与文档 scrollTop 可能短暂不一致，取大者 */
+    function scrollTop() {
+      return Math.max(window.scrollY || 0, document.documentElement.scrollTop || 0);
+    }
+    function threshold() {
+      return Math.max(480, window.innerHeight * 0.6);
+    }
+
+    let rafId = 0;
+    function update() {
+      rafId = 0;
+      const y = scrollTop();
+      const doc = document.documentElement;
+      /* 边界兜底：已滚到底部时无条件显示，避免整数取整导致差几像素就不显示 */
+      const atBottom = y + window.innerHeight >= doc.scrollHeight - 2;
+      btn.classList.toggle('show', atBottom || y > threshold());
+    }
+    /* 取消上一次未执行的帧再安排新的：既合并高频事件，
+       也不会像「标志位跳过」那样在后台标签页 rAF 挂起时把状态卡死 */
+    function schedule() {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(update);
+    }
+
+    btn.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    window.addEventListener('scroll', schedule, { passive: true });
+    /* 缩放/横竖屏切换后一屏高度变了，阈值要重算 */
+    window.addEventListener('resize', schedule, { passive: true });
+    schedule();
+  }
+
   function boot() {
     if (window.Theme) Theme.init();
     App.loadSettings();
     App.renderHeader();
     registerSW();
+    setupBackToTop();
 
     if (window.cloud && cloud.auth && cloud.auth.onAuthStateChange) {
       cloud.auth.onAuthStateChange(function (event) {
         App.renderHeader();
-        // 登录态变化时，仅重渲染与身份强相关的页面，避免打断阅读/编辑
+        /* 登录态变化时，仅重渲染与身份强相关的页面，避免打断阅读 / 编辑 */
         const parts = parseHash();
         if (parts[0] === 'login' || parts[0] === 'admin') route();
       });

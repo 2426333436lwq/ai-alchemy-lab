@@ -140,6 +140,56 @@
     }).join('');
   };
 
+  /* ---------- 本地收藏（localStorage，不依赖云端，换浏览器不跟随） ---------- */
+  const FAV_KEY = 'alch-favorites';
+
+  function favRead() {
+    try {
+      const list = JSON.parse(localStorage.getItem(FAV_KEY) || '[]');
+      return Array.isArray(list) ? list : [];
+    } catch (e) { return []; }
+  }
+
+  function favWrite(list) {
+    try { localStorage.setItem(FAV_KEY, JSON.stringify(list)); } catch (e) { /* 存储不可用静默 */ }
+  }
+
+  Util.Favorites = {
+    list: function () { return favRead(); },
+    count: function () { return favRead().length; },
+    has: function (id) {
+      const n = Number(id);
+      return favRead().some(function (f) { return Number(f.id) === n; });
+    },
+    /* 切换收藏；返回 true 表示收藏后状态，false 表示已取消 */
+    toggle: function (article) {
+      const list = favRead();
+      const idx = list.findIndex(function (f) { return Number(f.id) === Number(article.id); });
+      if (idx >= 0) {
+        list.splice(idx, 1);
+        favWrite(list);
+        return false;
+      }
+      list.unshift({
+        id: article.id,
+        title: article.title,
+        summary: article.summary || '',
+        cover: article.cover || '',
+        tags: Array.isArray(article.tags) ? article.tags : [],
+        views: article.views || 0,
+        created_at: article.created_at,
+        savedAt: new Date().toISOString()
+      });
+      favWrite(list);
+      return true;
+    },
+    remove: function (id) {
+      const n = Number(id);
+      favWrite(favRead().filter(function (f) { return Number(f.id) !== n; }));
+    },
+    clear: function () { favWrite([]); }
+  };
+
   Util.setLoading = function (root, text) {
     root.innerHTML =
       '<div class="page-loading"><span class="flame-pulse"></span><p>' +

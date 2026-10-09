@@ -138,6 +138,24 @@
       .map(function (x) { return x.a; });
   };
 
+  /* 全站相邻文章：按发布时间定位当前文章的上一篇 / 下一篇（与系列内导航无关）
+     prev = 更早发布的紧邻一篇；next = 更晚发布的紧邻一篇 */
+  Api.adjacentArticles = async function (article) {
+    requireCloud();
+    const cols = 'id,title,created_at';
+    const [prevRes, nextRes] = await Promise.all([
+      cloud.database.from('articles').select(cols).eq('status', 'published')
+        .lt('created_at', article.created_at)
+        .order('created_at', { ascending: false }).limit(1),
+      cloud.database.from('articles').select(cols).eq('status', 'published')
+        .gt('created_at', article.created_at)
+        .order('created_at', { ascending: true }).limit(1)
+    ]);
+    const prevRows = unwrap(prevRes, '加载上一篇失败') || [];
+    const nextRows = unwrap(nextRes, '加载下一篇失败') || [];
+    return { prev: prevRows[0] || null, next: nextRows[0] || null };
+  };
+
   Api.incrementViews = function (id) {
     if (!window.cloud) return;
     /* 同一会话内同一篇只计一次，避免刷新刷阅读量 */

@@ -26,20 +26,20 @@
       ADD_ATTR: ['target', 'rel'],
     });
 
-    // 代码高亮
+    /* 代码高亮 */
     if (window.hljs) {
       Util.$$('pre code', container).forEach(function (block) {
         try { hljs.highlightElement(block); } catch (e) { /* 忽略单个代码块失败 */ }
       });
     }
 
-    // 外链新窗口打开
+    /* 外链新窗口打开 */
     Util.$$('a[href^="http"]', container).forEach(function (a) {
       a.setAttribute('target', '_blank');
       a.setAttribute('rel', 'noopener noreferrer');
     });
 
-    // 表格可横向滚动
+    /* 表格可横向滚动 */
     Util.$$('table', container).forEach(function (table) {
       const wrap = document.createElement('div');
       wrap.style.overflowX = 'auto';
@@ -47,14 +47,14 @@
       wrap.appendChild(table);
     });
 
-    // 标题锚点：给目录跳转用（序号式 id，避免中文 slug 与路由 hash 冲突）
+    /* 标题锚点：给目录跳转用（序号式 id，避免中文 slug 与路由 hash 冲突） */
     let hi = 0;
     Util.$$('h2, h3', container).forEach(function (h) {
       hi += 1;
       h.id = 'sec-' + hi;
     });
 
-    // 代码块一键复制
+    /* 代码块一键复制 */
     if (opts && opts.codeCopy) {
       Util.$$('pre', container).forEach(function (pre) {
         const wrap = document.createElement('div');

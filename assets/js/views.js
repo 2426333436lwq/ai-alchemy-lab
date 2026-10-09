@@ -110,7 +110,7 @@
       : '';
 
     root.innerHTML =
-      '<article class="article-detail">' + coverHtml +
+      '<article class="article-detail" data-url="' + Util.escapeHtml(siteOrigin + '/a/' + article.id + '/') + '">' + coverHtml +
       '<h1 class="detail-title">' + Util.escapeHtml(article.title) + '</h1>' +
       '<div class="detail-meta">' +
       '<span>' + Util.formatDate(article.created_at) + '</span>' +
@@ -118,11 +118,13 @@
       '<span id="series-badge"></span>' +
       '<span class="detail-tags">' + Util.tagChips(article.tags) + '</span>' +
       '</div>' +
+      '<div id="resume-bar-slot"></div>' +
       '<div id="article-content" class="article-body"></div>' +
       '<div id="toc-box"></div>' +
       '<div id="share-box" class="card share-box"></div>' +
       '<div id="attachments-area"></div>' +
       '<div id="series-nav"></div>' +
+      '<div id="post-nav"></div>' +
       '<div id="related-box"></div>' +
       '<div id="hot-box"></div>' +
       '<div id="comment-box" class="card comment-box"></div>' +
@@ -131,9 +133,9 @@
 
     const contentEl = Util.$('#article-content', root);
     renderMarkdown(contentEl, article.content, { codeCopy: true });
-    setupReadingAssist(root, contentEl);
+    setupReadingAssist(root, contentEl, article);
 
-    // 所属系列：徽章 + 系列内上一篇/下一篇
+    /* 所属系列：徽章 + 系列内上一篇 / 下一篇 */
     if (article.series_id) {
       (async function () {
         try {
@@ -175,7 +177,25 @@
       })();
     }
 
-    // 附件区
+    /* 全站上下篇：按发布时间串联全部文章（不依赖系列） */
+    (async function () {
+      try {
+        const adj = await Api.adjacentArticles(article);
+        const box = Util.$('#post-nav', root);
+        if (!box || (!adj.prev && !adj.next)) return;
+        box.innerHTML =
+          '<div class="card post-nav"><div class="post-nav-links">' +
+          (adj.prev
+            ? '<a class="post-nav-item" href="#/article/' + adj.prev.id + '"><span class="pn-label">上一篇</span>' + Util.escapeHtml(adj.prev.title) + '</a>'
+            : '<span class="post-nav-item disabled"><span class="pn-label">上一篇</span>已是最早一篇</span>') +
+          (adj.next
+            ? '<a class="post-nav-item next" href="#/article/' + adj.next.id + '"><span class="pn-label">下一篇</span>' + Util.escapeHtml(adj.next.title) + '</a>'
+            : '<span class="post-nav-item disabled next"><span class="pn-label">下一篇</span>已是最新一篇</span>') +
+          '</div></div>';
+      } catch (e) { /* 全站导航加载失败不影响阅读 */ }
+    })();
+
+    /* 附件区 */
     try {
       const files = await Api.listAttachments(article.id);
       if (files.length) {
@@ -261,14 +281,73 @@
   const ReadingAssist = { detach: function () {} };
   window.ReadingAssist = ReadingAssist;
 
-  function setupReadingAssist(root, contentEl) {
+  function setupReadingAssist(root, contentEl, article) {
     ReadingAssist.detach();
+
+    const articleId = article ? article.id : 0;
+
+    /* —— 阅读进度（localStorage）：保存滚动位置，读完自动清除 —— */
+    function progressKey() { return 'alch-progress-' + articleId; }
+    function loadProgress() {
+      try { return JSON.parse(localStorage.getItem(progressKey()) || 'null'); }
+      catch (e) { return null; }
+    }
+    function clearProgress() {
+      try { localStorage.removeItem(progressKey()); } catch (e) { /* 忽略 */ }
+    }
+    function saveProgress(pct, y) {
+      if (!articleId) return;
+      try {
+        localStorage.setItem(progressKey(), JSON.stringify({ pct: pct, y: y, t: Date.now() }));
+      } catch (e) { /* 存储不可用忽略 */ }
+    }
+    /* 统一提交进度：读到底视为读完并清除；靠近顶部（<5%）不写入，
+       避免页面初始加载或主动回顶时用 0 覆盖掉有效的续读进度 */
+    function commitProgress(pct) {
+      if (!articleId) return;
+      if (pct >= 0.97) { clearProgress(); return; }
+      if (pct < 0.05) return;
+      saveProgress(pct, window.scrollY);
+    }
+    /* 停止滚动 0.5s 后才写入，避免高频滚动刷 localStorage */
+    const scheduleProgressSave = Util.debounce(function (pct) {
+      commitProgress(pct);
+    }, 500);
 
     const heads = Util.$$('h2, h3', contentEl);
     const box = Util.$('#toc-box', root);
     const bar = Util.$('#read-progress');
     const barFill = Util.$('#read-progress-bar');
     const showToc = heads.length >= 3;
+
+    /* 续读提示条：仅当存在未读完的进度（5%~97%、30 天内）时出现 */
+    (function setupResumeBar() {
+      const slot = Util.$('#resume-bar-slot', root);
+      if (!slot || !articleId) return;
+      const p = loadProgress();
+      if (!p || typeof p.pct !== 'number') return;
+      if (p.pct < 0.05 || p.pct >= 0.97) { clearProgress(); return; }
+      if (p.t && Date.now() - p.t > 30 * 24 * 3600 * 1000) { clearProgress(); return; }
+      const pctText = Math.round(p.pct * 100) + '%';
+      slot.innerHTML =
+        '<div class="resume-bar"><span>上次读到 ' + pctText + '，要接着读吗？</span>' +
+        '<span class="resume-ops">' +
+        '<button class="btn btn-sm resume-go" type="button">继续阅读</button>' +
+        '<button class="resume-dismiss" type="button" aria-label="清除阅读进度" title="从头开始">×</button>' +
+        '</span></div>';
+      /* 用百分比而不是存下来的像素值定位：换设备、改窗口大小后像素位置会偏，比例不会 */
+      Util.$('.resume-go', slot).addEventListener('click', function () {
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        const targetY = Math.max(0, max * p.pct - 78);
+        window.scrollTo({ top: targetY, behavior: 'smooth' });
+        slot.innerHTML = '';
+      });
+      Util.$('.resume-dismiss', slot).addEventListener('click', function () {
+        clearProgress();
+        slot.innerHTML = '';
+        Util.toast('已清除阅读进度', 'info');
+      });
+    })();
 
     if (box) {
       if (!showToc) {
@@ -298,16 +377,25 @@
     const links = showToc ? Util.$$('.toc-link', box) : [];
     let ticking = false;
 
+    function currentPct() {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      return max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+    }
+
+    function paintProgress(pct) {
+      if (barFill) barFill.style.width = (pct * 100).toFixed(2) + '%';
+      if (bar) bar.classList.toggle('is-zero', pct < 0.005);
+    }
+
     function onScroll() {
       if (ticking) return;
       ticking = true;
       window.requestAnimationFrame(function () {
         ticking = false;
-        const doc = document.documentElement;
-        const max = doc.scrollHeight - window.innerHeight;
-        const pct = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
-        if (barFill) barFill.style.width = (pct * 100).toFixed(2) + '%';
-        if (bar) bar.classList.toggle('is-zero', pct < 0.005);
+        const pct = currentPct();
+        paintProgress(pct);
+        /* 阅读进度：接近底部视为读完并清除，否则防抖写入 */
+        scheduleProgressSave(pct);
 
         /* 当前小节：视口顶部下方 90px 之上、最靠下的那个标题 */
         let currentId = heads.length ? heads[0].id : '';
@@ -321,14 +409,24 @@
       });
     }
 
+    /* 缩放 / 横竖屏切换：只重画进度条，不写进度。
+       窗口一变，同样的 scrollY 会对应完全不同的百分比，写进去就是脏数据 */
+    function onResize() { paintProgress(currentPct()); }
+
     if (bar) bar.classList.remove('hidden');
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
+    window.addEventListener('resize', onResize, { passive: true });
     onScroll();
 
     ReadingAssist.detach = function () {
+      /* 离开文章页前立即落一次进度（顶部不覆盖、读到底清除，规则同 commitProgress） */
+      if (articleId) commitProgress(currentPct());
+      /* 清掉续读提示：下次进入文章页重新初始化，避免上一页的提示残留 */
+      const slot = document.querySelector('#resume-bar-slot');
+      if (slot) slot.innerHTML = '';
+
       window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
+      window.removeEventListener('resize', onResize);
       if (bar) { bar.classList.add('hidden'); bar.classList.remove('is-zero'); }
       if (barFill) barFill.style.width = '0%';
       ReadingAssist.detach = function () {};
@@ -495,7 +593,7 @@
         btn.addEventListener('click', async function () {
           const li = btn.closest('.comment-item');
           const id = Number(li.getAttribute('data-id'));
-          if (!confirm('确定删除这条留言？')) return;
+          if (!window.confirm('确定删除这条留言？')) return;
           try {
             await Api.deleteComment(id);
             comments = comments.filter(function (x) { return x.id !== id && x.parent_id !== id; });
@@ -516,14 +614,30 @@
     const box = Util.$('#share-box', root);
     if (!box) return;
     const link = location.origin + location.pathname + '#/article/' + article.id;
+    const faved = Util.Favorites.has(article.id);
     box.innerHTML =
       '<div class="share-head">这炉丹还不错？带出去给人看看</div>' +
       '<div class="share-actions">' +
+      '<button class="btn btn-sm btn-fav' + (faved ? ' is-faved' : '') + '" id="btn-fav">' +
+        (faved ? '★ 已收藏' : '☆ 收藏本文') + '</button>' +
       '<button class="btn btn-sm" id="btn-copy-link">复制链接</button>' +
       '<button class="btn btn-sm" id="btn-share-img">生成分享图</button>' +
       '<button class="btn btn-sm" id="btn-copy-rich">复制标题 + 链接</button>' +
+      '<button class="btn btn-sm" id="btn-print">打印 / 存 PDF</button>' +
       '</div>' +
       '<div id="share-preview"></div>';
+
+    Util.$('#btn-fav', box).addEventListener('click', function () {
+      const nowFaved = Util.Favorites.toggle(article);
+      this.textContent = nowFaved ? '★ 已收藏' : '☆ 收藏本文';
+      this.classList.toggle('is-faved', nowFaved);
+      Util.toast(nowFaved ? '已收入你的丹架' : '已从丹架取下', nowFaved ? 'success' : 'info');
+      if (window.App && App.updateFavBadge) App.updateFavBadge();
+    });
+
+    Util.$('#btn-print', box).addEventListener('click', function () {
+      window.print();
+    });
 
     function done(ok, okMsg) {
       Util.toast(ok ? okMsg : '复制失败，请手动选取复制', ok ? 'success' : 'error');
@@ -565,6 +679,61 @@
       }
     });
   }
+
+  /* ---------------- 我的收藏（本地 localStorage） ---------------- */
+
+  Views.bookmarks = async function (root) {
+    Util.setLoading(root, '整理丹架中…');
+    const favs = Util.Favorites.list();
+
+    if (!favs.length) {
+      root.innerHTML =
+        '<h1 class="section-title">我的丹架</h1>' +
+        '<div class="empty-box"><h2>丹架空空</h2>' +
+        '<p>在文章页点「☆ 收藏本文」，喜欢的丹方就会收在这里。收藏仅保存在当前浏览器。</p>' +
+        '<p style="margin-top:16px"><a class="btn btn-gold" href="#/">去逛逛丹房</a></p></div>';
+      return;
+    }
+
+    root.innerHTML =
+      '<h1 class="section-title">我的丹架</h1>' +
+      '<p class="section-sub">共收藏 ' + favs.length + ' 篇 · 仅保存在当前浏览器，清除浏览数据会丢失</p>' +
+      '<div class="bookmarks-bar"><button class="btn btn-sm" id="btn-clear-fav" type="button">清空丹架</button></div>' +
+      '<div class="article-grid fav-grid" id="fav-grid"></div>';
+
+    const grid = Util.$('#fav-grid', root);
+    grid.innerHTML = favs.map(function (f) {
+      const a = {
+        id: f.id, title: f.title, summary: f.summary,
+        cover: f.cover, tags: f.tags, views: f.views, created_at: f.savedAt || f.created_at
+      };
+      return '<div class="fav-cell">' + articleCard(a) +
+        '<button class="fav-remove" type="button" data-id="' + f.id + '" title="从丹架取下" aria-label="取消收藏">✕</button></div>';
+    }).join('');
+
+    Util.$('#btn-clear-fav', root).addEventListener('click', function () {
+      if (!window.confirm('确定清空全部收藏？此操作不可恢复。')) return;
+      Util.Favorites.clear();
+      if (window.App && App.updateFavBadge) App.updateFavBadge();
+      Util.toast('丹架已清空', 'info');
+      Views.bookmarks(root);
+    });
+
+    Util.$$('.fav-remove', root).forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        Util.Favorites.remove(btn.getAttribute('data-id'));
+        if (window.App && App.updateFavBadge) App.updateFavBadge();
+        Util.toast('已从丹架取下', 'info');
+        const cell = btn.closest('.fav-cell');
+        if (cell) cell.remove();
+        const left = Util.Favorites.count();
+        /* 全部取完就切回空状态，别留一个空网格 */
+        if (left === 0) { Views.bookmarks(root); return; }
+        const sub = Util.$('.section-sub', root);
+        if (sub) sub.textContent = '共收藏 ' + left + ' 篇 · 仅保存在当前浏览器，清除浏览数据会丢失';
+      });
+    });
+  };
 
   /* ---------------- 标签 ---------------- */
 
