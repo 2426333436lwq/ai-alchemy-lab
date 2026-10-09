@@ -109,11 +109,17 @@
       ? '<div class="detail-cover"><img src="' + article.cover + '" alt="' + Util.escapeHtml(article.title) + '"></div>'
       : '';
 
+    /* 阅读时长：与静态快照同一套算法——先抠掉代码块，再按字数 / 400 取整，最少 1 分钟 */
+    const readMinutes = Math.max(1, Math.round(
+      String(article.content || '').replace(/```[\s\S]*?```/g, '').length / 400
+    ));
+
     root.innerHTML =
       '<article class="article-detail" data-url="' + Util.escapeHtml(siteOrigin + '/a/' + article.id + '/') + '">' + coverHtml +
       '<h1 class="detail-title">' + Util.escapeHtml(article.title) + '</h1>' +
       '<div class="detail-meta">' +
       '<span>' + Util.formatDate(article.created_at) + '</span>' +
+      '<span>约 ' + readMinutes + ' 分钟读完</span>' +
       '<span>阅读 <span id="view-count">' + ((article.views || 0) + 1) + '</span></span>' +
       '<span id="series-badge"></span>' +
       '<span class="detail-tags">' + Util.tagChips(article.tags) + '</span>' +

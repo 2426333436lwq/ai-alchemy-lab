@@ -4,5 +4,6 @@ Allow: /
 # 面向 AI 的站点说明（llmstxt.org 约定）
 # llms.txt: https://ai-alchemy-lab.app.workbuddy.host/llms.txt
 # llms-full.txt: https://ai-alchemy-lab.app.workbuddy.host/llms-full.txt
+# RSS 订阅: https://ai-alchemy-lab.app.workbuddy.host/feed.xml
 
 Sitemap: https://ai-alchemy-lab.app.workbuddy.host/sitemap.xml

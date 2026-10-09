@@ -45,3 +45,4 @@ AI 炼丹房是一个面向初学者的 AI / 大模型教学博客。全套文�
 - [全部文章归档](https://ai-alchemy-lab.app.workbuddy.host/archive/): 按发布时间排列的完整列表
 - [站点首页](https://ai-alchemy-lab.app.workbuddy.host/): 完整站点（含主题切换、搜索、评论）
 - [llms-full.txt](https://ai-alchemy-lab.app.workbuddy.host/llms-full.txt): 全部文章正文的完整 Markdown，适合整份喂给 AI
+- [RSS 订阅](https://ai-alchemy-lab.app.workbuddy.host/feed.xml): 新文章订阅源，可用阅读器直接订阅

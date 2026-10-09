@@ -2,7 +2,7 @@
  * 从云端导出的文章 JSON 生成：
  *   a/<id>/index.html  每篇文章一个真实 URL，正文完整落在 HTML 里
  *   archive/index.html 全站归档（爬虫枢纽页）
- *   sitemap.xml / robots.txt
+ *   sitemap.xml / robots.txt / feed.xml
  * 用法：
  *   node .workbuddy/scripts/gen-static.mjs <articles.json> [站点根目录]
  */
@@ -235,6 +235,40 @@ function archivePage() {
   });
 }
 
+/* ---------- feed.xml（RSS 2.0 订阅源） ---------- */
+
+/* RFC-822 日期：RSS 的 pubDate 只认这个格式，toUTCString 出来的就是 */
+function rfc822(iso) {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : d.toUTCString();
+}
+
+function feedXml() {
+  const items = articles.map(function (a) {
+    const link = urlOf(a);
+    return '  <item>\n' +
+      '    <title>' + esc(a.title || '') + '</title>\n' +
+      '    <link>' + esc(link) + '</link>\n' +
+      '    <guid isPermaLink="true">' + esc(link) + '</guid>\n' +
+      '    <pubDate>' + rfc822(a.created_at) + '</pubDate>\n' +
+      '    <description>' + esc(a.summary || a.title || '') + '</description>\n' +
+      '  </item>';
+  }).join('\n');
+
+  /* articles 已按发布时间降序，直接按数组顺序输出即可 */
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n' +
+    '<channel>\n' +
+    '  <title>' + esc(SITE) + '</title>\n' +
+    '  <link>' + esc(BASE + '/') + '</link>\n' +
+    '  <description>' + esc(SLOGAN) + '</description>\n' +
+    '  <language>zh-CN</language>\n' +
+    '  <atom:link href="' + esc(BASE + '/feed.xml') + '" rel="self" type="application/rss+xml"/>\n' +
+    '  <lastBuildDate>' + rfc822(articles.length ? articles[0].created_at : new Date().toISOString()) + '</lastBuildDate>\n' +
+    items + '\n' +
+    '</channel>\n</rss>\n';
+}
+
 /* ---------- llms.txt / llms-full.txt（给 AI 读的站点说明书） ---------- */
 
 function oneLine(s) {
@@ -261,7 +295,8 @@ function llmsTxt() {
     '## 其他入口\n\n' +
     '- [全部文章归档](' + BASE + '/archive/): 按发布时间排列的完整列表\n' +
     '- [站点首页](' + BASE + '/): 完整站点（含主题切换、搜索、评论）\n' +
-    '- [llms-full.txt](' + BASE + '/llms-full.txt): 全部文章正文的完整 Markdown，适合整份喂给 AI\n';
+    '- [llms-full.txt](' + BASE + '/llms-full.txt): 全部文章正文的完整 Markdown，适合整份喂给 AI\n' +
+    '- [RSS 订阅](' + BASE + '/feed.xml): 新文章订阅源，可用阅读器直接订阅\n';
 }
 
 function llmsFullTxt() {
@@ -345,9 +380,14 @@ write(path.join(siteDir, 'sitemap.xml'), sitemap);
 const robots = 'User-agent: *\nAllow: /\n\n' +
   '# 面向 AI 的站点说明（llmstxt.org 约定）\n' +
   '# llms.txt: ' + BASE + '/llms.txt\n' +
-  '# llms-full.txt: ' + BASE + '/llms-full.txt\n\n' +
+  '# llms-full.txt: ' + BASE + '/llms-full.txt\n' +
+  '# RSS 订阅: ' + BASE + '/feed.xml\n\n' +
   'Sitemap: ' + BASE + '/sitemap.xml\n';
 write(path.join(siteDir, 'robots.txt'), robots);
+
+/* RSS 订阅源：按发布时间倒序，链接指向静态页，便于阅读器抓正文 */
+const feed = feedXml();
+write(path.join(siteDir, 'feed.xml'), feed);
 
 /* 给 AI 读的两个文件：llms.txt 是索引，llms-full.txt 是全文 */
 const llms = llmsTxt();
@@ -384,6 +424,7 @@ console.log('  未变:', changes.same.length + ' 篇');
 console.log('  清理下线:', removed.length ? removed.join(',') : '无');
 console.log('归档页: archive/index.html');
 console.log('sitemap 条目:', urls.length);
+console.log('feed.xml:', articles.length + ' 条 · ' + (Buffer.byteLength(feed) / 1024).toFixed(1) + ' KB');
 console.log('llms.txt:', (Buffer.byteLength(llms) / 1024).toFixed(1) + ' KB');
 console.log('llms-full.txt:', (Buffer.byteLength(llmsFull) / 1024).toFixed(1) + ' KB');
 console.log('首页静态导航:', updateIndexNav() ? '已更新' : '未找到标记，跳过');
