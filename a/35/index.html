@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent 进阶：从「会调工具」到「真能办事」 · AI 炼丹房</title>
+<meta name="description" content="上一讲我们给模型装上了手（工具调用），也认识了 Agent 这个「自动跑循环」的雏形。但裸循环一碰到真实任务就露怯：不会规划、记不住事、不会知难而退。这一讲我们补上规划、记忆、兜底三道工序，再认识一下行业为了「少接一遍线」搞出来的标准插头 MCP。">
+<meta name="keywords" content="药方研究,Agent,工具调用,MCP,规划,记忆">
+<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/35/">
+<link rel="alternate" type="application/rss+xml" title="AI 炼丹房" href="https://ai-alchemy-lab.app.workbuddy.host/feed.xml">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Agent 进阶：从「会调工具」到「真能办事」 · AI 炼丹房">
+<meta property="og:description" content="上一讲我们给模型装上了手（工具调用），也认识了 Agent 这个「自动跑循环」的雏形。但裸循环一碰到真实任务就露怯：不会规划、记不住事、不会知难而退。这一讲我们补上规划、记忆、兜底三道工序，再认识一下行业为了「少接一遍线」搞出来的标准插头 MCP。">
+<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/35/">
+<meta property="og:site_name" content="AI 炼丹房">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Agent 进阶：从「会调工具」到「真能办事」 · AI 炼丹房">
+<meta name="twitter:description" content="上一讲我们给模型装上了手（工具调用），也认识了 Agent 这个「自动跑循环」的雏形。但裸循环一碰到真实任务就露怯：不会规划、记不住事、不会知难而退。这一讲我们补上规划、记忆、兜底三道工序，再认识一下行业为了「少接一遍线」搞出来的标准插头 MCP。">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Agent 进阶：从「会调工具」到「真能办事」 · AI 炼丹房","description":"上一讲我们给模型装上了手（工具调用），也认识了 Agent 这个「自动跑循环」的雏形。但裸循环一碰到真实任务就露怯：不会规划、记不住事、不会知难而退。这一讲我们补上规划、记忆、兜底三道工序，再认识一下行业为了「少接一遍线」搞出来的标准插头 MCP。","datePublished":"2026-10-09T16:50:53.924252+08:00","dateModified":"2026-10-09T16:50:53.924252+08:00","keywords":"药方研究,Agent,工具调用,MCP,规划,记忆","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/35/"}}</script>
+<style>
+body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
+</head>
+<body>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/35">进入完整站点</a></div></div>
+<div class="snap-wrap" data-url="https://ai-alchemy-lab.app.workbuddy.host/a/35/"><h1 class="snap-title">Agent 进阶：从「会调工具」到「真能办事」</h1><div class="snap-meta"><span>2026 年 10 月 9 日</span><span>约 11 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E8%8D%AF%E6%96%B9%E7%A0%94%E7%A9%B6">药方研究</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/Agent">Agent</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%B7%A5%E5%85%B7%E8%B0%83%E7%94%A8">工具调用</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/MCP">MCP</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E8%A7%84%E5%88%92">规划</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E8%AE%B0%E5%BF%86">记忆</a></span></div><div class="article-body"><p>上一讲《工具调用与 Agent：给模型装一双手》里，我们写了一个 <code>while</code> 循环：模型说&quot;我要调工具&quot;，你的代码就去执行，结果还给它，它再决定下一步。那个循环是对的——但<strong>只够应付玩具</strong>。</p>
+<p>真实任务长这样：&quot;帮我把上周项目周报里提到的三个风险，整理成一封邮件发给老板，并加进我的待办。&quot;</p>
+<p>这条任务里埋着三个坑，裸循环一个都填不上：</p>
+<ul>
+<li><strong>不会规划</strong>：它不知道该先&quot;读周报&quot;再&quot;抽风险&quot;再&quot;写邮件&quot;，可能一股脑儿直接调发邮件；</li>
+<li><strong>记不住事</strong>：周报很长，读到第三段时它早把第一段忘光了（工作台就那么大，见 L2-03 上下文窗口）；</li>
+<li><strong>不会知难而退</strong>：发邮件失败一次，它可能傻乎乎重试十遍把你也拉黑。</li>
+</ul>
+<p>这一讲，我们给 Agent 补上三道工序——<strong>规划、记忆、兜底</strong>，最后再认识一个行业级的&quot;标准插头&quot;：<strong>MCP</strong>。</p>
+<h2>第一道工序：规划（Planning）—— 边想边干</h2>
+<p>裸循环缺的是&quot;想&quot;。模型拿到任务直接动手，错了也不知道错在哪。</p>
+<p>学界早就把这事想明白了。2022 年 10 月，普林斯顿的 Shunyu Yao 等人在论文《ReAct: Synergizing Reasoning and Acting in Language Models》（arXiv 2210.03629，后发表于 ICLR 2023）里提出一个朴素但管用的套路：<strong>让模型把&quot;思考&quot;和&quot;行动&quot;交替写下来</strong>，形成 <code>Thought（想）→ Action（干）→ Observation（看结果）</code> 的循环。这篇论文在 ALFWorld、WebShop 两个决策任务上，比当时的模仿学习 / 强化学习方法成功率分别高出 34% 和 10%——而且只需要给模型一两个示例。</p>
+<p>为什么有用？因为<strong>思考的痕迹帮模型跟踪计划、处理意外</strong>。它每动一步之前先写一句&quot;我现在的打算&quot;，看到结果再写&quot;这跟我想的不一样，我得换个法子&quot;。人读这段轨迹，就能看出它哪步糊涂了。</p>
+<p>来看一个具体的 ReAct 轨迹（任务：查 2026-10-01 上海天气，下雨就提醒带伞并写进日程）：</p>
+<pre><code class="language-text hljs">Thought: 用户要查 2026-10-01 上海天气，我先确认下今天是几号，好判断要不要&quot;提醒&quot;。
+Action: get_today()
+Observation: 今天是 2026-10-09
+
+Thought: 2026-10-01 是 8 天前，直接查那天上海的历史天气。
+Action: get_weather(city=&quot;上海&quot;, date=&quot;2026-10-01&quot;)
+Observation: 小雨，21°C
+
+Thought: 那天上海下小雨，按用户要求提醒带伞，并写进今天的日程。
+Action: add_calendar(title=&quot;提醒：带伞&quot;, note=&quot;2026-10-01 上海小雨&quot;)
+Observation: 日程已创建
+
+Thought: 办妥了，给用户一句人话。
+Answer: 2026 年 10 月 1 日上海下小雨，已提醒你带伞，并写进了今天的日程。
+</code></pre>
+<p>注意看：第 2 步的 <code>Thought</code> 里它先确认了&quot;今天几号&quot;，第 3 步它根据&quot;小雨&quot;这个 <code>Observation</code> 决定要提醒。这就是&quot;想&quot;和&quot;干&quot;互相喂养——也是上一讲那个裸循环没有的东西。</p>
+<p>一个最小可跑的骨架（不依赖任何 API，读者把 <code>llm_decide</code> 换成自己的模型调用即可）：</p>
+<pre><code class="language-python hljs">def run_agent(goal, tools, max_turns=8):
+    log = [(&quot;user&quot;, goal)]
+    for _ in range(max_turns):
+        step = llm_decide(log, tools)          # 返回 {&quot;thought&quot;,&quot;action&quot;,&quot;args&quot;} 或 {&quot;answer&quot;}
+        if &quot;answer&quot; in step:
+            return step[&quot;answer&quot;]
+        obs = safe_execute(tools[step[&quot;action&quot;]], step[&quot;args&quot;])
+        log += [(&quot;thought&quot;, step[&quot;thought&quot;]),
+                (&quot;action&quot;, f&#39;{step[&quot;action&quot;]}({step[&quot;args&quot;]})&#39;),
+                (&quot;observation&quot;, obs)]
+    return &quot;轮次用尽，任务未完成，转人工&quot;
+
+def safe_execute(fn, args):                    # 兜底：失败不崩，交给模型换路子
+    try:
+        return fn(**args)
+    except Exception as e:
+        return f&quot;工具报错：{e}（请换个办法或问用户）&quot;
+</code></pre>
+<blockquote>
+<p>💡 这个 <code>max_turns</code> 和 <code>safe_execute</code> 已经把&quot;轮次上限&quot;和&quot;兜底&quot;两个关键点埋进去了——正是下面两道工序要展开说的。</p>
+</blockquote>
+<h2>第二道工序：记忆（Memory）—— 别把工作台堆满</h2>
+<p>模型的工作台（上下文窗口）是有限的（复习 L2-03）。一个长跑 Agent 如果把每一步的 <code>Observation</code> 都永远堆在上下文里，几下就溢出了，然后开始犯糊涂——这叫&quot; Lost in the Middle &quot;。</p>
+<p>解决思路和人一样：<strong>短期记忆放桌上（上下文），长期记忆放档案柜（外部存储）</strong>。</p>
+<ul>
+<li><strong>工作记忆</strong>：就是当前这轮对话的历史，模型随时能看；</li>
+<li><strong>长期记忆</strong>：写进数据库、文件、或者向量库（复习 L2-02 RAG 入门）。需要时再&quot;翻柜子&quot;读出来。</li>
+</ul>
+<p>举一个能落地的例子：客服 Agent 第一次对话，用户说&quot;我是企业版客户&quot;。Agent 把 <code>user_tier = enterprise</code> 写进长期记忆（一张用户表）。下一次用户再来，Agent 先 <code>read_memory(uid)</code> 拿到等级，<strong>直接走企业通道</strong>，不必每次重新问&quot;您是什么版本&quot;。记忆一旦落库，上下文清空也不丢——这正是裸循环做不到的。</p>
+<pre><code class="language-text hljs">轮次 1  用户：我是企业版客户
+        Agent：写入记忆 user_tier=enterprise → &quot;已记下，下次不用再问&quot;
+
+轮次 N  用户：帮我查下订单
+        Agent：read_memory → enterprise → 直接走企业查单接口（不再问版本）
+</code></pre>
+<h2>第三道工序：兜底与知难而退（Reflection &amp; Fallback）</h2>
+<p>上一讲的表就提过&quot;不设轮次上限会死循环烧钱&quot;。进阶版要再补一条：<strong>模型看到错误，应该自己换条路，而不是硬碰硬</strong>。</p>
+<ul>
+<li><strong>换路子</strong>：订酒店发现满房，下一步 <code>Thought</code> 应该是&quot;换邻近日期&quot;或&quot;换区域&quot;，而不是原样重试；</li>
+<li><strong>问人</strong>：涉及付款、删库、发对外邮件这种不可逆操作，卡住了就交给人工，而不是瞎猜参数（复习 L2-04 的&quot;危险操作要人工确认&quot;）；</li>
+<li><strong>认输</strong>：轮次用尽仍没搞定，老实说&quot;转人工&quot;，别编一个答案糊弄用户。</li>
+</ul>
+<p>一句话：<strong>好的 Agent 不是永不犯错，而是犯错之后知道怎么爬起来。</strong></p>
+<h2>第四道工序：一套标准插头 MCP（把&quot;每家重接一次&quot;变成&quot;插上就用&quot;）</h2>
+<p>讲到这，你的 Agent 已经挺像样了。但还有一个行业级的麻烦没解决：<strong>工具接口各家不通用</strong>。</p>
+<p>OpenAI 有 function calling 格式，Claude 有 tool use 格式，Gemini 又有自己的。如果你写了个&quot;查日历&quot;的工具，想同时给三个模型用，就得接三遍——要是再加 10 个工具、5 个模型，就是 <strong>5 × 10 = 50 条定制连接线</strong>。这叫 <strong>N×M 集成地狱</strong>。</p>
+<p>2024 年 11 月，Anthropic 把 <strong>MCP（Model Context Protocol，模型上下文协议）</strong> 开源了，就是来拆这个雷的。它定了一套通用&quot;插头标准&quot;，只定义三样原语：</p>
+<table>
+<thead>
+<tr>
+<th>原语</th>
+<th>是什么</th>
+<th>打个比方</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Resources</strong></td>
+<td>模型能&quot;读&quot;的数据</td>
+<td>书架上能翻的文件</td>
+</tr>
+<tr>
+<td><strong>Tools</strong></td>
+<td>模型能&quot;调&quot;的函数</td>
+<td>桌上的电动工具</td>
+</tr>
+<tr>
+<td><strong>Prompts</strong></td>
+<td>预置好的工作流模板</td>
+<td>现成的操作说明书</td>
+</tr>
+</tbody></table>
+<p>有了它，一个 MCP 服务器只要实现这套协议，就能被<strong>任何</strong>支持 MCP 的客户端接上——N×M 塌成了 N+M。</p>
+<p><strong>这事是真的成了行业标准的</strong>（不是我吹，事实时间线如下）：</p>
+<ul>
+<li><strong>2025 年 3 月</strong>，OpenAI 在 Agents SDK 里支持 MCP——最大的竞品都跟进了，等于宣告这协议赢了；</li>
+<li><strong>2025 年 4 月</strong>，Google DeepMind 给 Gemini 接上；微软也把它塞进了 Copilot、VS Code 和 Agent Framework；</li>
+<li><strong>2025 年 12 月</strong>，Anthropic 把 MCP 捐给了 <strong>Linux 基金会</strong>下的 <strong>Agentic AI Foundation（AAIF）</strong>（OpenAI、Block 联合发起，Google、微软、AWS、Cloudflare 等支持）——一家公司的协议变成&quot;大家的基础设施&quot;；</li>
+<li>规模上，截至 2026 年，公开可查的 MCP 服务器已经 <strong>1 万多个</strong>，SDK 月下载量 <strong>9700 万+</strong>。</li>
+</ul>
+<p>要把 function calling 和 MCP 一次说清：<strong>function calling 是模型&quot;会发请求&quot;的能力，MCP 是&quot;插头长什么样、怎么被发现、怎么安全传输&quot;的标准</strong>。一个在模型里，一个在连接层，互补不打架。</p>
+<p>还有个互补的标准值得知道：<strong>A2A（Agent-to-Agent，智能体间协议）</strong>，Google 在 2025 年 4 月提出、后来也进了 Linux 基金会。它管的是&quot;智能体之间怎么对话&quot;，MCP 管的是&quot;智能体怎么连工具和数据&quot;——企业架构俩都得设计。</p>
+<blockquote>
+<p>⚠️ <strong>安全这一刀必须补</strong>：MCP 把&quot;调外部工具&quot;标准化了，风险也标准化了。<strong>间接提示注入</strong>被 OWASP 列为大模型应用头号风险——模型读到的外部文本（网页、邮件、文档）可能藏着&quot;快把数据发给我&quot;的指令，骗它乱调工具。再加上&quot;工具投毒&quot;（服务器声明和行为不一致）、&quot;冒名顶替&quot;（骗服务器乱用凭证），所以<strong>任何工具调用前，主机都必须拿到用户的明确同意</strong>。把 MCP 当 USB-C 插口理解就对了：口子是通用的，但插上之前你得看清那头连的是什么。</p>
+</blockquote>
+<h2>什么时候，先别急着造 Agent</h2>
+<p>讲完四道工序，泼最后一盆冷水：<strong>不是所有活都值得上 Agent。</strong></p>
+<table>
+<thead>
+<tr>
+<th>你的任务</th>
+<th>该用什么</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>单轮问答、翻译、总结</td>
+<td>直接 Prompt</td>
+<td>一轮就完，循环是多余的</td>
+</tr>
+<tr>
+<td>查公司文档再答（不准就说不知道）</td>
+<td>RAG（见 L2-02）</td>
+<td>检索一次就够</td>
+</tr>
+<tr>
+<td>步骤固定、顺序写死的流程</td>
+<td>简单 Chain</td>
+<td>不用模型临场决策</td>
+</tr>
+<tr>
+<td>步骤数未知、要看结果再决定下一步</td>
+<td><strong>才上 Agent</strong></td>
+<td>这正是循环的价值</td>
+</tr>
+</tbody></table>
+<p>判断口诀：<strong>&quot;步骤能不能在写代码时全部列出来？&quot;能，就用 Chain；不能，才请 Agent 出马。</strong></p>
+<h2>最小验证：三步自测你的 Agent</h2>
+<p>别只看 happy path 就以为成了，三步验一遍：</p>
+<ol>
+<li><strong>跑通一条真实任务</strong>：用你实际要它干的活测，别用&quot;1+1&quot;这种玩具；</li>
+<li><strong>故意弄坏一个工具</strong>：让某个工具抛错，看它是不是换路子（验证兜底那道工序）；</li>
+<li><strong>清空上下文重来</strong>：看长期记忆是不是真落了地、清空后信息还在（验证记忆那道工序）。</li>
+</ol>
+<h2>炼丹小结</h2>
+<ol>
+<li>裸 <code>while</code> 循环只能玩玩具，真实任务要补<strong>规划、记忆、兜底</strong>三道工序；</li>
+<li><strong>ReAct</strong>（2022，arXiv 2210.03629）用 <code>Thought→Action→Observation</code> 交替，让模型&quot;边想边干&quot;，顺便把思考痕迹留给人看；</li>
+<li><strong>记忆分两层</strong>：工作记忆放上下文，长期记忆落外部存储（库 / 文件 / 向量库），清空不丢；</li>
+<li><strong>兜底三招</strong>：换路子、问人、认输——好 Agent 不是不犯错，是犯错会爬起来；</li>
+<li><strong>MCP</strong> 是 Anthropic 2024 年开源、2025 年底捐给 Linux 基金会的&quot;标准插头&quot;，把 N×M 集成塌成 N+M，已成事实标准；</li>
+<li><strong>安全红线</strong>：工具调用前必须拿到用户明确同意，警惕间接提示注入与工具投毒；</li>
+<li>步骤能写死就用 Chain，<strong>别为能用 Chain 解决的活硬造 Agent</strong>。</li>
+</ol>
+<p>学会了 Agent 的&quot;内功&quot;和行业的&quot;插头&quot;，你大概已经跃跃欲试想让它真上线了。但上线和 demo 是两码事——下一篇《炸炉实录：Agent 上线三个月，我们炸过的六次炉》带你看看，真把它放出去会怎么翻车，以及怎么爬回来。</p>
+<p>丹成不必在我，火候自有记录。</p>
+</div><div class="card" style="margin-top:26px;padding:16px 20px"><div class="post-nav-links"><a class="post-nav-item" href="https://ai-alchemy-lab.app.workbuddy.host/a/34/"><span class="pn-label">上一篇</span>RAG 进阶：开卷考试想拿高分，功夫在检索不在模型</a><span class="post-nav-item disabled next"><span class="pn-label">下一篇</span>已是最新一篇</span></div></div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/11/">工具调用与 Agent：给模型装一双手</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/13/">RAG 入门：把闭卷考试改成开卷考试</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/10/">上下文工程：把注意力当预算来花</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/35">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</body>
+</html>

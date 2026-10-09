@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG 进阶：开卷考试想拿高分，功夫在检索不在模型 · AI 炼丹房</title>
+<meta name="description" content="入门篇把「闭卷改开卷」讲清了，这一篇讲开卷也考不好的人问题在哪。RAG 八成的失败发生在检索环节，不在生成。我们把一套能直接照做的四道工序拆开：切块、选向量库、选 Embedding、混合检索加重排，每一步都给可自己跑的例子和 2026 年公开基准里站得住的结论。">
+<meta name="keywords" content="药方研究,RAG,向量数据库,Embedding,检索增强">
+<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/34/">
+<link rel="alternate" type="application/rss+xml" title="AI 炼丹房" href="https://ai-alchemy-lab.app.workbuddy.host/feed.xml">
+<meta property="og:type" content="article">
+<meta property="og:title" content="RAG 进阶：开卷考试想拿高分，功夫在检索不在模型 · AI 炼丹房">
+<meta property="og:description" content="入门篇把「闭卷改开卷」讲清了，这一篇讲开卷也考不好的人问题在哪。RAG 八成的失败发生在检索环节，不在生成。我们把一套能直接照做的四道工序拆开：切块、选向量库、选 Embedding、混合检索加重排，每一步都给可自己跑的例子和 2026 年公开基准里站得住的结论。">
+<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/34/">
+<meta property="og:site_name" content="AI 炼丹房">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="RAG 进阶：开卷考试想拿高分，功夫在检索不在模型 · AI 炼丹房">
+<meta name="twitter:description" content="入门篇把「闭卷改开卷」讲清了，这一篇讲开卷也考不好的人问题在哪。RAG 八成的失败发生在检索环节，不在生成。我们把一套能直接照做的四道工序拆开：切块、选向量库、选 Embedding、混合检索加重排，每一步都给可自己跑的例子和 2026 年公开基准里站得住的结论。">
+<link rel="stylesheet" href="../../assets/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"RAG 进阶：开卷考试想拿高分，功夫在检索不在模型 · AI 炼丹房","description":"入门篇把「闭卷改开卷」讲清了，这一篇讲开卷也考不好的人问题在哪。RAG 八成的失败发生在检索环节，不在生成。我们把一套能直接照做的四道工序拆开：切块、选向量库、选 Embedding、混合检索加重排，每一步都给可自己跑的例子和 2026 年公开基准里站得住的结论。","datePublished":"2026-10-09T15:57:47.258681+08:00","dateModified":"2026-10-09T15:57:47.258681+08:00","keywords":"药方研究,RAG,向量数据库,Embedding,检索增强","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/34/"}}</script>
+<style>
+body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
+</head>
+<body>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/34">进入完整站点</a></div></div>
+<div class="snap-wrap" data-url="https://ai-alchemy-lab.app.workbuddy.host/a/34/"><h1 class="snap-title">RAG 进阶：开卷考试想拿高分，功夫在检索不在模型</h1><div class="snap-meta"><span>2026 年 10 月 9 日</span><span>约 12 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E8%8D%AF%E6%96%B9%E7%A0%94%E7%A9%B6">药方研究</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/RAG">RAG</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E5%90%91%E9%87%8F%E6%95%B0%E6%8D%AE%E5%BA%93">向量数据库</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/Embedding">Embedding</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E6%A3%80%E7%B4%A2%E5%A2%9E%E5%BC%BA">检索增强</a></span></div><div class="article-body"><p>一句先说在前面：RAG 入门那篇我们把它比作「把闭卷考试改成开卷考试」。改完之后，很多人兴冲冲上线，发现模型还是答非所问、还是一本正经地编。问题常常不在模型「脑子」不行，而在「翻书」的方式不行。</p>
+<p>我们见过太多这样的项目：生成模型换了好几个，效果纹丝不动；后来才发现，是检索这一步根本没把对的几页书递到模型手上。一篇 2026 年的行业复盘里提到，做生产级 RAG 的团队大约有六成从第一天起就建了评估，而早一年这个比例还不到三成。差距不在模型，在「先量再改」这件事上。</p>
+<p>这一篇，我们把 RAG 里真正决定成败的环节拆成四道工序，每一步都给你能自己跑的例子，以及 2026 年公开基准里站得住的结论。</p>
+<h2>第一道工序：切块，把一本书拆成好翻的便签</h2>
+<p>假设你要把一本三百页的员工手册交给模型当参考书。你总不能每次都让它从头翻到尾，那太费 token，也太慢。RAG 的做法是先把手册切成一张张小便签，检索时只把相关的几张递给模型。</p>
+<p>「怎么切」是整条链路里最被低估的一道工序。切坏了，后面的向量库和重排再强也救不回来。</p>
+<p>几种切法，按实用度排：</p>
+<ul>
+<li><strong>按语义单元切（默认推荐）</strong>。以段落、小节为单位，而不是生硬地按字符数截断。重叠留 10% 到 20%，让跨边界的上下文不至于被腰斩。行业里一个被反复验证的务实默认是：每段大约 512 个 token，重叠 15% 左右。</li>
+<li><strong>层级切（父子结构）</strong>。存两份：小块的用于精确匹配，命中之后把包含它的「父块」整段还给模型。这样既有精度，又有上下文。一份 2025 年的研究说，在交叉引用很多的法律合同和技术手册上，这招把检索准确率抬了 12% 到 18%。</li>
+<li><strong>语义切分</strong>按句间语义落差来断句，长文更准，但建索引大约慢 14 倍，一般等评估告诉你「精度是瓶颈」再上。</li>
+<li><strong>Late chunking（迟切分）</strong>。先用长上下文 Embedding 模型把整篇编码，再切 token 向量，让每块都带着前后文信息。文档里有代词、有跨段指代时特别管用。</li>
+</ul>
+<p>还有一件容易被忘的事：给每张便签贴上元数据。来源文档名、所在章节、日期、部门标签，这些不是装饰。有了它们，你才能做「只在本季度文档里搜」「只搜技术部政策」这种过滤式检索，也方便模型判断这段出处靠不靠谱。</p>
+<blockquote>
+<p>一句话：切块切得好，是后面所有优化的地基。切得烂，地基歪了，上面盖什么都是危房。</p>
+</blockquote>
+<h2>第二道工序：选向量库，你的便签收纳柜</h2>
+<p>切块之后，每张便签要变成一个向量存起来，查询时按「长得像」快速翻出来。装这些向量的地方叫向量库。2026 年可选的有几十个，但大多数团队真正会落地的，按「你已经在用什么」来选最省事：</p>
+<table>
+<thead>
+<tr>
+<th>你的处境</th>
+<th>顺手的选择</th>
+<th>一句话理由</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>团队已经在用 PostgreSQL</td>
+<td><strong>pgvector</strong></td>
+<td>向量和你的业务数据同一张表、同一笔事务，不新增一套要运维的系统</td>
+</tr>
+<tr>
+<td>先跑个原型、本地试水</td>
+<td><strong>Chroma</strong></td>
+<td>嵌进 Python 进程就能用，API 最简单，几百千条规模够用</td>
+</tr>
+<tr>
+<td>过滤条件多、想自己托管</td>
+<td><strong>Qdrant</strong></td>
+<td>Rust 写的，按租户、权限、日期做 payload 过滤很顺手，开源免费</td>
+</tr>
+<tr>
+<td>规模要到十亿级</td>
+<td><strong>Milvus</strong></td>
+<td>分布式、GPU 加速，企业级体量就它最稳</td>
+</tr>
+<tr>
+<td>不想运维、要合规托管</td>
+<td><strong>Pinecone</strong></td>
+<td>全托管 Serverless，索引都不用调，代价是账单和把数据放在别人云上</td>
+</tr>
+<tr>
+<td>多模态、端侧、嵌入式</td>
+<td><strong>LanceDB</strong></td>
+<td>进程内运行，图片音频文本一起存，适合本地和边缘</td>
+</tr>
+</tbody></table>
+<p>注意一个常见误会：FAISS 只是个相似搜索的「库」，不是数据库。它没有持久化、没有多租户、没有权限。实验阶段够用，真要多人、文档天天变的生产系统，还是得上正经数据库。</p>
+<p>选库这件事，别被跑分带偏。一份 2026 年的开源向量库基准在固定召回下测单线程吞吐，排出来是 Redis、Qdrant、Milvus、Weaviate、pgvector、Chroma、LanceDB 依次递减，差出十倍。但那是「只跑一个查询、关掉持久化」的极限值。真实生产看的是并发下的尾延迟和你能不能运维得动。对绝大多数人来说，选「和你现有栈契合」的比选「跑分第一」的重要得多。</p>
+<h2>第三道工序：选 Embedding 模型，定义什么叫「长得像」</h2>
+<p>向量库只负责存和找，「两段文字像不像」这件事，是 Embedding 模型定义的。这里有个坑我们见过太多次：有人图省事，拿自己的 7B 聊天模型去生成向量。结果又慢又不准。Embedding 有专门的小模型干这事，几百 MB 的体量，比 7B 聊天模型又快又准。</p>
+<p>2026 年公开基准（MTEB）上，靠前的开源选项有这些：</p>
+<ul>
+<li><strong>BGE-M3</strong>（智源 BAAI）：五百多 MB，支持一百多种语言，而且一个模型同时产出稠密向量、稀疏（像关键词）向量、多向量三种结果。这意味着你想做混合检索，不用再单独跑一个 BM25，一套就够。MIT 协议，商用友好，也是目前生产里部署量最大的开源 Embedding 之一。</li>
+<li><strong>Qwen3-Embedding</strong>（阿里）：开源榜上综合分最高的那一档（MTEB 平均值约七成往上，更大的 8B 变体在 MTEB v2 上冲到七成五左右），支持一百多种语言，上下文最长能到 32K，整篇长文档可以当一块塞进去。</li>
+<li><strong>Nomic Embed / EmbeddingGemma</strong>：一两百 MB 的小个子，能在 CPU 甚至端侧跑，支持 Matryoshka（可以把向量从 768 维截断到 256、128 维，省存储且精度掉得很少）。中文小语料、隐私敏感、要本地跑，选它们。</li>
+</ul>
+<blockquote>
+<p>中文场景我们一般先推 BGE-M3 或 Qwen3-Embedding。它们对中文和多语言都吃得开，又是开源能自己托管，数据和账单都攥在自己手里。</p>
+</blockquote>
+<p>提醒一句：Embedding 模型选错，比选错生成模型更隐蔽。生成模型答错了你一眼能看出来，Embedding 把「看起来像但其实不对」的段落递上去，模型会非常自然地基于错误上下文编出一段通顺的胡话。所以评估检索质量这步，省不得。</p>
+<h2>第四道工序：混合检索加重排，把「大概对」拧成「真对」</h2>
+<p>前面三步，召回的是「可能相关」的一堆。最后这道工序，是把它们筛成「真相关」的几张。</p>
+<p><strong>先混合。</strong> 纯向量检索擅长「意思相近」，但碰到产品型号、错误代码、专有名词这类「必须一字不差」的查询就瞎了。反过来，纯关键词（BM25）认死字，但认不出同义改写。把两者并行跑，再用 Reciprocal Rank Fusion（RRF，常用 k=60）按排名融合，几乎在每个基准和真实分布上都更稳。公开测试里，混合检索比单独用任一路，把失败率压低两成到四成。</p>
+<p><strong>再重排。</strong> 召回先取五十条候选，交给一个 cross-encoder 重排模型，让它把查询和每段「放在一起看」，重新打分，只留最对的五条喂给模型。重排模型比初检索的「双塔」结构看得更细，代价是多花一百毫秒上下。多家 2026 年测试显示，这一步能再带来三成到四成的准确率提升。性价比高到几乎该当成默认动作：召回五十，重排到五。</p>
+<pre><code class="language-python hljs"># 一套最小可跑的检索骨架（思路优先，非某框架专属）
+candidates = hybrid_search(query, top_k=50)      # 稠密 + BM25，RRF 融合
+ranked    = reranker.rerank(query, candidates, top_k=5)  # cross-encoder 重排
+answer    = llm.generate(context=ranked, question=query)
+</code></pre>
+<h2>什么时候，先别急着上 RAG</h2>
+<p>RAG 不是万能膏药。几种情况我们建议先缓一缓：</p>
+<ul>
+<li><strong>知识又小又稳</strong>：就几十条规则，直接写进 system prompt 比建一套向量库省事十倍，还更可控。</li>
+<li><strong>检索质量没测过</strong>：先攒一份「问题—应该命中的文档」测试集，算一下 recall@5。这个数低于 0.7，说明瓶颈在检索，把生成模型换上天也没用。先修检索。</li>
+<li><strong>Agentic RAG、GraphRAG 是进阶不是起点</strong>。让模型自己决定要不要查、查什么、查几次，或者为知识建一张图去答多跳问题，这些能解特定难题，但每一圈都是一次额外调用。先把基础检索做对，再谈加环。</li>
+</ul>
+<h2>一个能自己跑的最小验证</h2>
+<p>不用等全套平台，三步走就能知道你的 RAG 是不是在裸奔：</p>
+<ol>
+<li>抽二十个真实问题，手动标出每个问题「标准答案应该来自哪几段」。</li>
+<li>跑你的检索，算 <strong>recall@5</strong>（该命中的段，前 5 条里出现的比例）和 <strong>MRR</strong>（第一个正确结果排第几）。</li>
+<li>把检索结果和模型最终答案都丢给一个 LLM 裁判，打分 <strong>faithfulness</strong>（答案是否忠于检索内容）和 <strong>answer relevance</strong>（是否真回答了问题）。这套指标框架叫 RAGAS，是 2026 年事实上的标准。</li>
+</ol>
+<p>测出来 recall@5 不到 0.7，回头去调切块和 Embedding；faithfulness 低但 context 是对的，那是 prompt 没让模型「只依据给定内容作答」——在 system prompt 里加一句「只根据提供的内容回答，资料里没有就明说」，常常立竿见影。</p>
+<h2>炼丹小结</h2>
+<ol>
+<li>RAG 八成的失败在检索，不在生成，先量再改，别盲目换模型。</li>
+<li>切块是第一道工序：按语义单元切、留 15% 重叠、给每张便签贴元数据，必要时用父子结构。</li>
+<li>选向量库看「现有栈契合度」而非跑分：已在用 PG 选 pgvector，原型选 Chroma，过滤多选自托管选 Qdrant，十亿级选 Milvus，零运维选 Pinecone。FAISS 是库不是数据库。</li>
+<li>Embedding 用专门小模型，别拿聊天模型凑；中文优先 BGE-M3 或 Qwen3-Embedding，小体量端侧看 Nomic / EmbeddingGemma。</li>
+<li>混合检索（稠密 + BM25，RRF 融合）加重排（召回 50→重排 5），是把「大概对」拧成「真对」的两道关键锁。</li>
+<li>知识小而稳就写进 prompt；检索没测过先别换生成模型；Agentic / GraphRAG 是进阶，不是起点。</li>
+<li>用 RAGAS 三指标（recall@5、MRR、faithfulness）给自己建一个最小评估，定期跑一次。</li>
+</ol>
+<p>丹成不必在我，火候自有记录。</p>
+<p><em>附注：本文事实核对于 2026 年 10 月初，参考了 MTEB 公开榜单，以及 2026 年多篇 RAG 生产实践评测（chunking / hybrid / reranking 的准确率与延迟区间），还有 Chroma、Qdrant、Milvus、pgvector、Pinecone、LanceDB、BGE-M3、Qwen3-Embedding、Nomic、EmbeddingGemma 等项目的公开文档与基准。文中具体数字（如重排提升三到四成、混合检索压低两成到四成失败率、切块重叠 15%）来自上述公开测试，样本与方法可能随时间变化，动手前请以自己的语料复现验证，不要直接当作硬结论。</em></p>
+<p>把检索做对之后，下一步自然就是让模型「拿着翻好的书去干活」——下一篇我们讲 Agent 与工具调用，看怎么把刚才这套检索，变成模型随时能调的一件工具。</p>
+</div><div class="card" style="margin-top:26px;padding:16px 20px"><div class="post-nav-links"><a class="post-nav-item" href="https://ai-alchemy-lab.app.workbuddy.host/a/4/"><span class="pn-label">上一篇</span>学习路线图：从「AI 是什么」到「自己炼一炉丹」</a><a class="post-nav-item next" href="https://ai-alchemy-lab.app.workbuddy.host/a/35/"><span class="pn-label">下一篇</span>Agent 进阶：从「会调工具」到「真能办事」</a></div></div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/13/">RAG 入门：把闭卷考试改成开卷考试</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/35/">Agent 进阶：从「会调工具」到「真能办事」</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/14/">temperature 与 top_p：控制模型「胆子」的两个旋钮</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/34">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</body>
+</html>

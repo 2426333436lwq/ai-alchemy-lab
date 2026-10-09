@@ -6,7 +6,21 @@
   <description>数据是药材 · 算力是炉火 · 调参是火候</description>
   <language>zh-CN</language>
   <atom:link href="https://ai-alchemy-lab.app.workbuddy.host/feed.xml" rel="self" type="application/rss+xml"/>
-  <lastBuildDate>Sun, 27 Sep 2026 08:30:00 GMT</lastBuildDate>
+  <lastBuildDate>Fri, 09 Oct 2026 08:50:53 GMT</lastBuildDate>
+  <item>
+    <title>Agent 进阶：从「会调工具」到「真能办事」</title>
+    <link>https://ai-alchemy-lab.app.workbuddy.host/a/35/</link>
+    <guid isPermaLink="true">https://ai-alchemy-lab.app.workbuddy.host/a/35/</guid>
+    <pubDate>Fri, 09 Oct 2026 08:50:53 GMT</pubDate>
+    <description>上一讲我们给模型装上了手（工具调用），也认识了 Agent 这个「自动跑循环」的雏形。但裸循环一碰到真实任务就露怯：不会规划、记不住事、不会知难而退。这一讲我们补上规划、记忆、兜底三道工序，再认识一下行业为了「少接一遍线」搞出来的标准插头 MCP。</description>
+  </item>
+  <item>
+    <title>RAG 进阶：开卷考试想拿高分，功夫在检索不在模型</title>
+    <link>https://ai-alchemy-lab.app.workbuddy.host/a/34/</link>
+    <guid isPermaLink="true">https://ai-alchemy-lab.app.workbuddy.host/a/34/</guid>
+    <pubDate>Fri, 09 Oct 2026 07:57:47 GMT</pubDate>
+    <description>入门篇把「闭卷改开卷」讲清了，这一篇讲开卷也考不好的人问题在哪。RAG 八成的失败发生在检索环节，不在生成。我们把一套能直接照做的四道工序拆开：切块、选向量库、选 Embedding、混合检索加重排，每一步都给可自己跑的例子和 2026 年公开基准里站得住的结论。</description>
+  </item>
   <item>
     <title>学习路线图：从「AI 是什么」到「自己炼一炉丹」</title>
     <link>https://ai-alchemy-lab.app.workbuddy.host/a/4/</link>
