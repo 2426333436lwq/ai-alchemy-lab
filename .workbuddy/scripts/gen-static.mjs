@@ -119,6 +119,7 @@ function pageShell(opts) {
     '<meta name="description" content="' + esc(opts.description) + '">\n' +
     (opts.keywords && opts.keywords.length ? '<meta name="keywords" content="' + esc(opts.keywords.join(',')) + '">\n' : '') +
     '<link rel="canonical" href="' + esc(canonical) + '">\n' +
+    '<link rel="alternate" type="application/rss+xml" title="' + esc(SITE) + '" href="' + esc(BASE + '/feed.xml') + '">\n' +
     '<meta property="og:type" content="' + (opts.ldType === 'WebPage' ? 'website' : 'article') + '">\n' +
     '<meta property="og:title" content="' + esc(opts.title) + '">\n' +
     '<meta property="og:description" content="' + esc(opts.description) + '">\n' +
