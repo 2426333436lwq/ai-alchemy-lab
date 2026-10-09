@@ -149,7 +149,7 @@ function pageShell(opts) {
     '<span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span>' +
     '<a class="btn btn-sm" href="' + esc(opts.spa) + '">进入完整站点</a>' +
     '</div></div>\n' +
-    '<div class="snap-wrap">' + opts.body + '</div>\n' +
+    '<div class="snap-wrap" data-url="' + esc(canonical) + '">' + opts.body + '</div>\n' +
     '<div class="snap-top"><div class="snap-foot">' +
     '<a href="' + BASE + '/">' + esc(SITE) + '</a> · ' + esc(SLOGAN) +
     ' · <a href="' + BASE + '/archive/">全部文章</a>' +
@@ -159,6 +159,20 @@ function pageShell(opts) {
 
 function articlePage(a) {
   const rel = related(a, 3);
+  /* 全站上下篇：articles 已按发布时间降序（新→旧），索引前为更晚、后为更早 */
+  const idx = articles.findIndex(function (x) { return x.id === a.id; });
+  const newer = idx > 0 ? articles[idx - 1] : null;   // 更晚发布 = 下一篇
+  const older = (idx >= 0 && idx < articles.length - 1) ? articles[idx + 1] : null; // 更早发布 = 上一篇
+  const navHtml = (older || newer)
+    ? '<div class="card" style="margin-top:26px;padding:16px 20px"><div class="post-nav-links">' +
+      (older
+        ? '<a class="post-nav-item" href="' + urlOf(older) + '"><span class="pn-label">上一篇</span>' + esc(older.title) + '</a>'
+        : '<span class="post-nav-item disabled"><span class="pn-label">上一篇</span>已是最早一篇</span>') +
+      (newer
+        ? '<a class="post-nav-item next" href="' + urlOf(newer) + '"><span class="pn-label">下一篇</span>' + esc(newer.title) + '</a>'
+        : '<span class="post-nav-item disabled next"><span class="pn-label">下一篇</span>已是最新一篇</span>') +
+      '</div></div>'
+    : '';
   const cover = a.cover && a.cover.length < 300000
     ? '<img class="snap-cover" src="' + a.cover + '" alt="' + esc(a.title) + '">'
     : '';
@@ -180,6 +194,7 @@ function articlePage(a) {
     (tags ? '<span class="detail-tags">' + tags + '</span>' : '') +
     '</div>' +
     '<div class="article-body">' + renderMarkdown(a.content) + '</div>' +
+    navHtml +
     relHtml +
     '<p style="margin-top:28px"><a class="btn" href="' + spaOf(a) + '">在完整站点中阅读本文</a></p>';
 
