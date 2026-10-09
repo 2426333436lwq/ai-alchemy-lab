@@ -620,6 +620,8 @@
     const box = Util.$('#share-box', root);
     if (!box) return;
     const link = location.origin + location.pathname + '#/article/' + article.id;
+    /* 站外分享统一用静态页地址：hash 链接在微博 / 微信里打开会丢路由 */
+    const shareUrl = location.origin + '/a/' + article.id + '/';
     const faved = Util.Favorites.has(article.id);
     box.innerHTML =
       '<div class="share-head">这炉丹还不错？带出去给人看看</div>' +
@@ -627,11 +629,22 @@
       '<button class="btn btn-sm btn-fav' + (faved ? ' is-faved' : '') + '" id="btn-fav">' +
         (faved ? '★ 已收藏' : '☆ 收藏本文') + '</button>' +
       '<button class="btn btn-sm" id="btn-copy-link">复制链接</button>' +
+      '<button class="btn btn-sm" id="btn-share-weibo">分享到微博</button>' +
+      '<button class="btn btn-sm" id="btn-share-zhihu">分享到知乎</button>' +
+      '<button class="btn btn-sm" id="btn-share-wechat">分享到微信</button>' +
       '<button class="btn btn-sm" id="btn-share-img">生成分享图</button>' +
       '<button class="btn btn-sm" id="btn-copy-rich">复制标题 + 链接</button>' +
       '<button class="btn btn-sm" id="btn-print">打印 / 存 PDF</button>' +
       '</div>' +
-      '<div id="share-preview"></div>';
+      '<div id="share-preview"></div>' +
+      '<div class="vote-box">' +
+      '<div class="share-head">这篇文章对你有帮助吗？</div>' +
+      '<div class="share-actions">' +
+      '<button class="btn btn-sm btn-vote" id="btn-vote-up" type="button">👍 有用</button>' +
+      '<button class="btn btn-sm btn-vote" id="btn-vote-down" type="button">👎 没用</button>' +
+      '<span class="vote-count" id="vote-count"></span>' +
+      '</div>' +
+      '</div>';
 
     Util.$('#btn-fav', box).addEventListener('click', function () {
       const nowFaved = Util.Favorites.toggle(article);
@@ -648,6 +661,57 @@
     function done(ok, okMsg) {
       Util.toast(ok ? okMsg : '复制失败，请手动选取复制', ok ? 'success' : 'error');
     }
+
+    /* 分享到站外：一律新窗口，带 noopener 避免对方页面拿到 window.opener */
+    Util.$('#btn-share-weibo', box).addEventListener('click', function () {
+      window.open('https://service.weibo.com/share/share.php?url=' + encodeURIComponent(shareUrl) +
+        '&title=' + encodeURIComponent(article.title), '_blank', 'noopener');
+    });
+
+    /* 知乎没有公开的网页投稿入口，用「待回答」页按话题过滤，点进去即可提问/分享 */
+    Util.$('#btn-share-zhihu', box).addEventListener('click', function () {
+      window.open('https://www.zhihu.com/question/waiting?topic=' + encodeURIComponent(article.title),
+        '_blank', 'noopener');
+    });
+
+    /* 微信没有网页分享接口，只能复制链接让用户自己粘贴 */
+    Util.$('#btn-share-wechat', box).addEventListener('click', function () {
+      Util.copyText(shareUrl).then(function (ok) { done(ok, '链接已复制，粘贴到微信即可'); });
+    });
+
+    /* ---- 文章反馈投票：纯前端计数，同一篇一人一票，记在 localStorage ---- */
+    const voteKey = 'alch-vote-' + article.id;
+    function readVote() {
+      try {
+        const v = localStorage.getItem(voteKey);
+        return v === 'up' || v === 'down' ? v : null;
+      } catch (e) { return null; }
+    }
+    function paintVote() {
+      const my = readVote();
+      const up = Util.$('#btn-vote-up', box);
+      const down = Util.$('#btn-vote-down', box);
+      const count = Util.$('#vote-count', box);
+      if (!up || !down || !count) return;
+      up.classList.toggle('is-voted', my === 'up');
+      down.classList.toggle('is-voted', my === 'down');
+      up.disabled = !!my && my !== 'up';
+      down.disabled = !!my && my !== 'down';
+      const n = my ? 1 : 0;
+      count.textContent = n
+        ? '已有 ' + n + ' 人反馈 · 你投了「' + (my === 'up' ? '有用' : '没用') + '」'
+        : '还没有人反馈 · 投一票吧';
+    }
+
+    ['up', 'down'].forEach(function (v) {
+      Util.$('#btn-vote-' + v, box).addEventListener('click', function () {
+        if (readVote()) return;
+        try { localStorage.setItem(voteKey, v); } catch (e) { /* 存储不可用静默 */ }
+        paintVote();
+        Util.toast('感谢反馈', 'success');
+      });
+    });
+    paintVote();
 
     Util.$('#btn-copy-link', box).addEventListener('click', function () {
       Util.copyText(link).then(function (ok) { done(ok, '链接已复制'); });

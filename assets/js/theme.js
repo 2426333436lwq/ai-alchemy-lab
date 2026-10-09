@@ -7,7 +7,23 @@
 
   var STORAGE_KEY = 'site-theme';
 
+/* auto 解析用的两套兜底主题：系统深色 → 暗夜黑，系统浅色 → 墨金 */
+  var AUTO_DARK = 'dark';
+  var AUTO_LIGHT = 'ink';
+
   var THEMES = [
+    {
+      id: 'auto',
+      name: '跟随系统',
+      desc: '随系统明暗自动切换 · 深色用暗夜黑，浅色用墨金',
+      dark: false,
+      auto: true,
+      /* 色卡画成半明半暗，一眼看出它会跟着系统变 */
+      sw: {
+        bg: 'linear-gradient(135deg, #f6f1e6 0%, #f6f1e6 48%, #0d1117 52%, #0d1117 100%)',
+        card: '#fffdf7', accent: '#b8860b', text: '#211d18'
+      }
+    },
     {
       id: 'ink',
       name: '墨金古风',
@@ -79,16 +95,40 @@
     if (dark) dark.disabled = !isDark;
   }
 
+  /* 系统是否偏好深色（老浏览器没有 matchMedia 时一律按浅色处理） */
+  function prefersDark() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+
+  /* auto 不是真的主题，要先解析成实际生效的那套 */
+  function resolveId(id) {
+    if (id !== 'auto') return id;
+    return prefersDark() ? AUTO_DARK : AUTO_LIGHT;
+  }
+
   function applyDom(id) {
+    /* current 记的是用户选的那个（可能是 auto），真正上到 DOM 的是解析后的 */
     current = id;
+    var real = resolveId(id);
     var root = document.documentElement;
     /* 切换瞬间加过渡类，结束后移除，避免常驻 !important 过渡拖累性能 */
     root.classList.add('theme-fading');
-    if (id === 'ink') root.removeAttribute('data-theme');
-    else root.setAttribute('data-theme', id);
-    syncHljs(themeOf(id).dark);
+    if (real === 'ink') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', real);
+    syncHljs(themeOf(real).dark);
     markActiveCard();
     setTimeout(function () { root.classList.remove('theme-fading'); }, 320);
+  }
+
+  /* 系统明暗变化时实时跟随，不刷新页面；只在用户选了 auto 时才有动作 */
+  function watchSystem() {
+    if (!window.matchMedia) return;
+    var mq = window.matchMedia('(prefers-color-scheme: dark)');
+    var onChange = function () {
+      if (current === 'auto') applyDom('auto');
+    };
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+    else if (mq.addListener) mq.addListener(onChange);
   }
 
   /* 登录用户把主题同步到云端（防抖 600ms，未登录自动跳过） */
@@ -147,6 +187,7 @@
     init: function () {
       applyDom(readLocal());
       buildPanel();
+      watchSystem();
     }
   };
 

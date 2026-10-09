@@ -1742,6 +1742,16 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
   font-weight: 600;
 }
 
+/* 文章页「这篇文章有用吗」投票（纯前端计数） */
+.vote-box { margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--line); }
+.vote-count { align-self: center; font-size: 12.5px; color: var(--ink-faint); }
+.btn-vote.is-voted {
+  background: color-mix(in srgb, var(--gold) 15%, transparent);
+  border-color: var(--gold);
+  color: var(--gold);
+  font-weight: 600;
+}
+
 /* 收藏页（我的丹架） */
 .bookmarks-bar { display: flex; justify-content: flex-end; margin: -6px 0 16px; }
 .fav-cell { position: relative; }
