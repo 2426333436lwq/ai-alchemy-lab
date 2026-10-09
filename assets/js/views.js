@@ -5,6 +5,9 @@
   const Views = {};
   const homeState = { page: 1, search: '' };
 
+  /* 评论后端开关：'waline' = Waline（匿名可评），'builtin' = 站内自建评论（登录 + 审核） */
+  const COMMENT_BACKEND = 'waline';
+
   function articleCard(a) {
     const cover = a.cover
       ? '<a class="card-cover" href="#/article/' + a.id + '"><img src="' + a.cover + '" alt="' + Util.escapeHtml(a.title) + '" loading="lazy"></a>'
@@ -134,6 +137,7 @@
       '<div id="related-box"></div>' +
       '<div id="hot-box"></div>' +
       '<div id="comment-box" class="card comment-box"></div>' +
+      '<div id="waline" class="waline-box"></div>' +
       '<div class="detail-actions"><a class="btn" href="#/">返回丹房</a></div>' +
       '</article>';
 
@@ -249,6 +253,7 @@
     } catch (e) { /* 附件加载失败不影响正文阅读 */ }
 
     renderShare(root, article);
+    mountWaline(root, article);
 
     try {
       const related = await Api.relatedArticles(article, 3);
@@ -279,7 +284,73 @@
       }
     } catch (e) { /* 热门榜失败不影响阅读 */ }
 
-    renderComments(root, article);
+    /* 评论后端：'waline' 用 Waline，'builtin' 用站内自建评论（需登录 + 审核）。
+       切回自建只需把这个常量改掉，两边代码都还在 */
+    if (COMMENT_BACKEND === 'builtin') {
+      renderComments(root, article);
+    } else {
+      const legacy = Util.$('#comment-box', root);
+      if (legacy) legacy.remove();
+    }
+  };
+
+  /* ---------------- Waline 评论 ---------------- */
+
+  const WALINE_SERVER = 'https://ai-alchemy-waline.vercel.app';
+  const WALINE_JS = 'https://unpkg.com/@waline/client@v3/dist/waline.umd.js';
+  let walineInstance = null;
+  let walineLoader = null;
+
+  /* 脚本按需加载，失败也只影响评论区，不拖慢首屏 */
+  function loadWaline() {
+    if (window.Waline) return Promise.resolve(window.Waline);
+    if (walineLoader) return walineLoader;
+    walineLoader = new Promise(function (resolve, reject) {
+      const s = document.createElement('script');
+      s.src = WALINE_JS;
+      s.async = true;
+      s.onload = function () {
+        window.Waline ? resolve(window.Waline) : reject(new Error('Waline 未挂载到 window'));
+      };
+      s.onerror = function () { reject(new Error('Waline 脚本加载失败')); };
+      document.head.appendChild(s);
+    });
+    return walineLoader;
+  }
+
+  function mountWaline(root, article) {
+    const box = Util.$('#waline', root);
+    if (!box) return;
+    loadWaline().then(function (Waline) {
+      /* SPA 换文章：必须先销毁旧实例，否则评论区串台 */
+      if (walineInstance) {
+        walineInstance.destroy();
+        walineInstance = null;
+      }
+      box.innerHTML = '';
+      /* v3 的 UMD 导出是命名空间对象，入口是 init()（不是 new Waline）；
+         3.16.0 认的是 serverURL 这个键，写 server 会直接抛 "Option 'serverURL' is missing!" */
+      walineInstance = Waline.init({
+        el: '#waline',
+        serverURL: WALINE_SERVER,
+        /* 每篇独立 path：SPA 是 hash 路由，不显式传会全都落在 / 上 */
+        path: '/a/' + article.id + '/',
+        locale: { placeholder: '留下你的炼丹心得...' },
+        dark: 'auto',
+        reaction: false,
+        commentCount: true,
+        pageSize: 10
+      });
+    }).catch(function () {
+      box.innerHTML = '<div class="card waline-fallback">评论组件没能加载出来，可能是网络不通，刷新页面再试试。</div>';
+    });
+  }
+
+  /* 离开文章页时销毁，避免实例残留 */
+  Views.unmountWaline = function () {
+    if (!walineInstance) return;
+    walineInstance.destroy();
+    walineInstance = null;
   };
 
   /* ---------------- 阅读辅助：目录 + 阅读进度条 ---------------- */

@@ -1752,6 +1752,30 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
   font-weight: 600;
 }
 
+/* Waline 评论区：把它的配色变量接到本站主题变量上，
+   这样 5 套主题（含两套深色）自动跟随，不用单独给 Waline 写暗色 */
+#waline {
+  --waline-theme-color: var(--gold);
+  --waline-active-color: var(--cinnabar);
+  --waline-bg-color: var(--card);
+  --waline-bg-color-light: var(--paper-deep);
+  --waline-bg-color-hover: var(--paper-deep);
+  --waline-color: var(--ink);
+  --waline-border-color: var(--line);
+  --waline-border: 1px solid var(--line);
+  --waline-info-bg-color: var(--paper-deep);
+  --waline-info-color: var(--ink-faint);
+  --waline-code-bg-color: var(--code-bg);
+  --waline-bq-color: var(--ink-faint);
+  --waline-disable-bg-color: var(--paper-deep);
+  --waline-disable-color: var(--ink-faint);
+  --waline-light-grey: var(--ink-faint);
+  --waline-box-shadow: none;
+  --waline-font-size: 15px;
+  margin-top: 32px;
+}
+.waline-fallback { padding: 16px 20px; color: var(--ink-soft); font-size: 14px; }
+
 /* 收藏页（我的丹架） */
 .bookmarks-bar { display: flex; justify-content: flex-end; margin: -6px 0 16px; }
 .fav-cell { position: relative; }
