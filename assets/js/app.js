@@ -44,12 +44,32 @@
     return parts;
   }
 
-  async function route() {
+  /* 路由必须串行：hashchange 连点时两个视图会并发渲染，
+     慢的那个后完成，会把新页面整个覆盖掉——表现为地址栏是 A、内容却是 B
+     （例如快速点「标签」再点「文章」，最后停在标签页）。改成排队执行，
+     且排队期间又有新导航时，旧的直接作废 */
+  let routeSeq = 0;
+  let routeChain = Promise.resolve();
+
+  function route() {
+    const seq = ++routeSeq;
+    routeChain = routeChain.then(function () {
+      if (seq !== routeSeq) return undefined; /* 期间又点了别的导航，这次不用跑了 */
+      return runRoute();
+    }).catch(function (err) {
+      console.error('[AI炼丹房] 路由渲染异常:', err && err.message ? err.message : '未知错误');
+    });
+    return routeChain;
+  }
+
+  async function runRoute() {
     const parts = parseHash();
     const root = mainEl();
     /* 离开文章页时卸掉目录高亮与进度条的滚动监听（必须在滚动重置之前，
        否则 detach 里算进度时拿到的已经是归零后的 scrollY） */
     if (window.ReadingAssist) ReadingAssist.detach();
+    /* 离开文章页时销毁 Waline 实例，否则下一次进文章会看到上一页的评论 */
+    if (window.Views && Views.unmountWaline) Views.unmountWaline();
 
     /* 换页必须回到顶部：否则新页面会继承上一页的滚动位置，
        表现为「打开新文章却停在半中间」+ 阅读进度被写成上一页的位置 */
