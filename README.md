@@ -35,7 +35,7 @@ assets/js/
   ask-widget.js              右下角可拖拽的 AI 问答浮窗
 assets/vendor/              第三方库本地副本（不依赖 CDN）
 articles/                   文章 Markdown 源文件
-deploy/waline/              评论 + 问答后端（部署在 Vercel，见其中 DEPLOY-NOTES.md）
+deploy/waline/              备用评论后端（Waline，部署在 Vercel，当前未启用，见 DEPLOY-NOTES.md）
 a/<id>/index.html           预渲染文章页（脚本生成，勿手改）
 archive/  sitemap.xml  robots.txt  feed.xml   （脚本生成）
 llms.txt  llms-full.txt     给 AI 读的站点索引与全文（脚本生成）
@@ -56,8 +56,10 @@ manifest.webmanifest  sw.js  icons/   PWA
 
 运行时依赖只有两处是外部的，都不影响页面本身：
 
-- 云数据库 / 存储 / 认证：WorkBuddy 云服务（配置在 `assets/js/config.js`）
-- 评论后端：`deploy/waline/` 部署在 Vercel，地址写在 `assets/js/views.js` 的 `WALINE_SERVER`
+- 云数据库 / 存储 / 认证：WorkBuddy 云服务（配置在 `assets/js/config.js`）。**评论也用它**，
+  读写站点自己的 `comments` 表，国内可达、零额外托管成本。
+- 备用评论后端：`deploy/waline/` 部署在 Vercel，地址写在 `assets/js/views.js` 的 `WALINE_SERVER`。
+  把 `COMMENT_BACKEND` 从 `'builtin'` 改成 `'waline'` 即可整体切过去（境外后端，大陆网络可能访问不到）。
 
 ## 给 AI 协作的说明
 

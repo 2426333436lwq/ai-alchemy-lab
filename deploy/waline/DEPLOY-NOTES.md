@@ -1,6 +1,10 @@
-# deploy/waline · 评论与问答后端
+# deploy/waline · 备用评论后端（当前未启用）
 
 这份是部署在 **Vercel** 上的 Waline 服务端源码，博客前台的评论区（`assets/js/views.js` 里的 `WALINE_SERVER`）指向它。
+
+> **2026-10-10 起已停用**：`views.js` 的 `COMMENT_BACKEND` 改为 `'builtin'`，评论改走站点自己的
+> `comments` 表（WorkBuddy 云服务，国内可达、零托管成本）。原因是 `*.vercel.app` 在大陆访问不到，
+> 国内访客看不到评论。这份代码完整保留，把常量改回 `'waline'` 就能切回来（样式与前端逻辑都还在）。
 
 ## 现况
 
