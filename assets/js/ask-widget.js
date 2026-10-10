@@ -3,6 +3,46 @@
   'use strict';
 
   const API = 'https://ai-alchemy-waline.vercel.app/api/ask';
+  const POS_KEY = 'alch.ask.fabPos'; // 拖动后的位置，存本机
+  const EDGE = 10;     // 距离视口边缘的最小留白
+  const DRAG_MIN = 5;  // 超过这个位移才算拖动，否则视为点击
+
+  function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
+
+  function loadPos() {
+    try { return JSON.parse(localStorage.getItem(POS_KEY) || 'null'); } catch (e) { return null; }
+  }
+  function savePos(x, y) {
+    try { localStorage.setItem(POS_KEY, JSON.stringify({ x: Math.round(x), y: Math.round(y) })); } catch (e) { /* 忽略 */ }
+  }
+
+  /* 把按钮放回可视范围内（换设备、缩放窗口后位置可能越界） */
+  function applyFabPos(fab, x, y, persist) {
+    const size = fab.offsetWidth || 52;
+    const maxX = window.innerWidth - size - EDGE;
+    const maxY = window.innerHeight - size - EDGE;
+    const nx = clamp(x, EDGE, Math.max(EDGE, maxX));
+    const ny = clamp(y, EDGE, Math.max(EDGE, maxY));
+    fab.classList.add('moved');
+    fab.style.left = nx + 'px';
+    fab.style.top = ny + 'px';
+    if (persist !== false) savePos(nx, ny);
+  }
+
+  /* 面板贴着按钮展开：优先放上方，上方放不下就放下方，左右做边界收敛 */
+  function placePanel(fab, panel) {
+    const f = fab.getBoundingClientRect();
+    const w = panel.offsetWidth;
+    const h = panel.offsetHeight;
+    if (!w || !h) return;
+    const left = clamp(f.left + f.width / 2 - w / 2, EDGE, Math.max(EDGE, window.innerWidth - w - EDGE));
+    let top = f.top - h - 10;
+    if (top < EDGE) top = f.bottom + 10;
+    top = clamp(top, EDGE, Math.max(EDGE, window.innerHeight - h - EDGE));
+    panel.classList.add('positioned');
+    panel.style.left = left + 'px';
+    panel.style.top = top + 'px';
+  }
 
   function init() {
     if (document.getElementById('ask-fab')) return;
@@ -24,12 +64,66 @@
       '<div class="ask-input"><input type="text" placeholder="输入你的问题..." autocomplete="off"><button>发送</button></div>';
     document.body.appendChild(panel);
 
-    /* 事件 */
-    fab.addEventListener('click', function () {
-      panel.classList.toggle('open');
-      if (panel.classList.contains('open')) {
-        panel.querySelector('input').focus();
+    /* 恢复上次拖动的位置 */
+    const saved = loadPos();
+    if (saved) applyFabPos(fab, saved.x, saved.y, false);
+    window.addEventListener('resize', function () {
+      const p = loadPos();
+      if (p) applyFabPos(fab, p.x, p.y, false);
+      if (panel.classList.contains('open')) placePanel(fab, panel);
+    });
+
+    /* 事件：可拖动，松手没怎么动就当点击 */
+    let drag = null;
+    let suppressClick = false;
+
+    fab.addEventListener('pointerdown', function (ev) {
+      if (ev.button !== 0 && ev.pointerType === 'mouse') return;
+      const rect = fab.getBoundingClientRect();
+      drag = {
+        id: ev.pointerId,
+        dx: ev.clientX - rect.left,
+        dy: ev.clientY - rect.top,
+        startX: ev.clientX,
+        startY: ev.clientY,
+        moved: false,
+      };
+      try { fab.setPointerCapture(ev.pointerId); } catch (e) { /* 忽略 */ }
+    });
+
+    fab.addEventListener('pointermove', function (ev) {
+      if (!drag || ev.pointerId !== drag.id) return;
+      const dist = Math.abs(ev.clientX - drag.startX) + Math.abs(ev.clientY - drag.startY);
+      if (!drag.moved && dist > DRAG_MIN) {
+        drag.moved = true;
+        fab.classList.add('dragging');
       }
+      if (!drag.moved) return;
+      ev.preventDefault();
+      applyFabPos(fab, ev.clientX - drag.dx, ev.clientY - drag.dy, false);
+    });
+
+    function endDrag(ev) {
+      if (!drag || ev.pointerId !== drag.id) return;
+      const moved = drag.moved;
+      drag = null;
+      fab.classList.remove('dragging');
+      try { fab.releasePointerCapture(ev.pointerId); } catch (e) { /* 忽略 */ }
+      if (moved) {
+        suppressClick = true;
+        savePos(parseFloat(fab.style.left) || 0, parseFloat(fab.style.top) || 0);
+        if (panel.classList.contains('open')) placePanel(fab, panel);
+      }
+    }
+    fab.addEventListener('pointerup', endDrag);
+    fab.addEventListener('pointercancel', endDrag);
+
+    fab.addEventListener('click', function () {
+      if (suppressClick) { suppressClick = false; return; }
+      const willOpen = !panel.classList.contains('open');
+      if (willOpen) placePanel(fab, panel);
+      panel.classList.toggle('open');
+      if (willOpen) { panel.querySelector('input').focus(); }
     });
     panel.querySelector('.ask-close').addEventListener('click', function () {
       panel.classList.remove('open');
