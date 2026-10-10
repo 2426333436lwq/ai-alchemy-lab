@@ -479,12 +479,19 @@ async function searchWeb(query) {
     });
     if (res.ok) {
       const html = await res.text();
+      // 结果链接：遍历 <a>，取含 result-link 的（属性顺序/引号都容错）
       const links = [];
-      const lre = /<a[^>]*href="([^"]*)"[^>]*class='result-link'[^>]*>([\s\S]*?)<\/a>/g;
+      const are = /<a\b([^>]*)>([\s\S]*?)<\/a>/g;
       let m;
-      while ((m = lre.exec(html)) && links.length < 6) links.push({ url: ddgUnwrap(m[1]), title: stripTags(m[2]) });
+      while ((m = are.exec(html)) && links.length < 6) {
+        if (m[1].indexOf('result-link') < 0) continue;
+        const h = m[1].match(/href="([^"]*)"/);
+        const title = stripTags(m[2]);
+        if (title) links.push({ url: ddgUnwrap(h ? h[1] : ''), title: title });
+      }
+      // 摘要：result-snippet 单元格
       const snips = [];
-      const sre = /<td[^>]*class='result-snippet'[^>]*>([\s\S]*?)<\/td>/g;
+      const sre = /<td[^>]*class=['"][^'"]*result-snippet[^'"]*['"][^>]*>([\s\S]*?)<\/td>/g;
       while ((m = sre.exec(html)) && snips.length < 6) snips.push(stripTags(m[1]));
       links.forEach(function (l, i) { out.push({ title: l.title, url: l.url, snippet: snips[i] || '' }); });
     }
@@ -492,7 +499,9 @@ async function searchWeb(query) {
 
   if (!out.length) {
     try {
-      const res = await fetch('https://zh.wikipedia.org/w/api.php?action=query&list=search&format=json&utf8=1&srlimit=4&srsearch=' + encodeURIComponent(query));
+      const res = await fetch('https://zh.wikipedia.org/w/api.php?action=query&list=search&format=json&utf8=1&srlimit=4&srsearch=' + encodeURIComponent(query), {
+        headers: { 'User-Agent': 'AlchemyLabBot/1.0 (https://ai-alchemy-lab.2426333436.workers.dev)' },
+      });
       if (res.ok) {
         const j = await res.json().catch(function () { return {}; });
         ((j.query && j.query.search) || []).forEach(function (r) {
