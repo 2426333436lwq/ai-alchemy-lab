@@ -2,7 +2,9 @@
 (function () {
   'use strict';
 
-  /* 兜底：境外 Vercel 上的自建接口（境内可能访问不到，故仅作备用） */
+  /* 兜底：境外 Vercel 上的自建接口（智谱，按量计费；且境内可能访问不到）
+     默认关闭，改成 true 才会启用 —— 现阶段只用免费模型 */
+  const FALLBACK_TO_REMOTE = false;
   const API = 'https://ai-alchemy-waline.vercel.app/api/ask';
   const SYSTEM = '你是「AI 炼丹房」（一个讲大模型原理、微调、部署与工具选型的中文技术博客）的问答助手。'
     + '回答用简体中文，简洁实用，能给出可动手验证的命令或步骤就给；不确定的事情直说不确定，不要编造具体数字。';
@@ -11,8 +13,9 @@
     return !!(window.cloud && cloud.llm && cloud.llm.chat && cloud.llm.chat.completions);
   }
 
-  /* 模型按「快 → 稳」依次尝试；某个不可用就换下一个 */
-  const MODELS = ['deepseek-v4-flash', 'hunyuan-chat', 'auto'];
+  /* 只走免费档（官方 credits 倍率：hy3 = x0.00；hunyuan-chat 未标价；hunyuan-2.0-thinking = x0.04）
+     用户量上来之后再考虑 deepseek-v4-flash(x0.17) / deepseek-v4-pro(x0.51) 这类付费档 */
+  const MODELS = ['hy3', 'hunyuan-chat', 'hunyuan-2.0-thinking'];
 
   /* 主通道：WorkBuddy 云服务大模型，域名与本站一致（国内直连可达） */
   async function askCloud(q, onDelta) {
@@ -191,21 +194,21 @@
         panel.querySelector('.ask-msgs').scrollTop = 99999;
       };
       try {
-        if (hasCloudLlm()) {
-          const answer = await askCloud(q, function (partial) {
-            bubble.textContent = partial;
-            panel.querySelector('.ask-msgs').scrollTop = 99999;
-          });
-          if (answer && answer.trim()) { finish(answer); return; }
-          throw new Error('云服务返回空内容');
-        }
-        finish(await askRemote(q));
+        if (!hasCloudLlm()) throw new Error('云服务不可用');
+        const answer = await askCloud(q, function (partial) {
+          bubble.textContent = partial;
+          panel.querySelector('.ask-msgs').scrollTop = 99999;
+        });
+        if (answer && answer.trim()) { finish(answer); return; }
+        throw new Error('云服务返回空内容');
       } catch (err) {
-        try {
-          finish(await askRemote(q));
-        } catch (e2) {
-          finish('连不上问答服务，请检查网络后再试；也可以直接翻文章或用邮箱联系站长。');
+        if (FALLBACK_TO_REMOTE) {
+          try {
+            finish(await askRemote(q));
+            return;
+          } catch (e2) { /* 落到下面的提示 */ }
         }
+        finish('问答服务现在有点忙，过一会儿再试试；也可以直接翻文章找答案。');
       }
     }
 
