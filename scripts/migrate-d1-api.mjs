@@ -18,6 +18,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
 
 const token = process.env.CLOUDFLARE_API_TOKEN || '';
+const apiKey = process.env.CLOUDFLARE_API_KEY || '';
+const email = process.env.CLOUDFLARE_EMAIL || '';
 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || '';
 const dry = process.argv.indexOf('--dry') >= 0;
 const files = process.argv.slice(2).filter(function (a) { return a.indexOf('--') !== 0; });
@@ -61,9 +63,12 @@ function splitStatements(sql) {
 async function runSql(sql) {
   const url = 'https://api.cloudflare.com/client/v4/accounts/' + accountId +
     '/d1/database/' + databaseId + '/query';
+  const headers = { 'Content-Type': 'application/json' };
+  if (apiKey && email) { headers['X-Auth-Email'] = email; headers['X-Auth-Key'] = apiKey; }
+  else { headers['Authorization'] = 'Bearer ' + token; }
   const res = await fetch(url, {
     method: 'POST',
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    headers: headers,
     body: JSON.stringify({ sql: sql }),
   });
   const json = await res.json().catch(function () { return {}; });
@@ -89,7 +94,10 @@ if (dry) {
   process.exit(0);
 }
 
-if (!token) { console.error('缺少 CLOUDFLARE_API_TOKEN'); process.exit(1); }
+if (!token && !(apiKey && email)) {
+  console.error('缺少认证：设置 CLOUDFLARE_API_TOKEN，或 CLOUDFLARE_API_KEY + CLOUDFLARE_EMAIL（Global API Key）');
+  process.exit(1);
+}
 if (!accountId) { console.error('缺少 CLOUDFLARE_ACCOUNT_ID'); process.exit(1); }
 
 let okCount = 0;
