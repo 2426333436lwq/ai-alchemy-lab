@@ -1,0 +1,21 @@
+# Cloudflare Workers 配置：静态前端 + D1（文章/评论）+ 同域 AI 问答
+# 部署：push main 由 Cloudflare 自动构建，或本地 `npx wrangler deploy`
+name = "ai-alchemy-lab"
+main = "_worker.js"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# 静态资源：整站作为 assets，由 _worker.js 通过 env.ASSETS 兜底返回
+[assets]
+directory = "./"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+# D1 数据库：文章表 + 评论表
+[[d1_databases]]
+binding = "DB"
+database_name = "ai_alchemy"
+database_id = "a1c244f0-e686-476a-8240-499ea2ace13f"
+
+# AI 问答用的智谱 API Key 不要写在这里（会进仓库），
+# 用 `npx wrangler secret put ZHIPU_API_KEY` 或在 Cloudflare 面板 Settings→Variables 配置。

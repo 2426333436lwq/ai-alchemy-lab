@@ -2,11 +2,11 @@
 (function () {
   'use strict';
 
-  /* 兜底（也是静态托管下的唯一通道）：境外 Vercel 上的自建接口（智谱，按量计费）
-     站点迁移到 Cloudflare 静态托管后，WorkBuddy 的 cloud.llm 通道随云 SDK 一起下线，
-     问答改走这里；没有云 SDK 时 askCloud 会自动跳过，直接落到这条通道。 */
+  /* 问答唯一通道：同域 Cloudflare Worker 代理智谱 GLM-4-Flash（/api/ask）。
+     站点已迁到 Cloudflare Workers + D1，不再依赖 WorkBuddy 云 SDK 或境外 Vercel，
+     同域请求在国内也能正常到达。 */
   const FALLBACK_TO_REMOTE = true;
-  const API = 'https://ai-alchemy-waline.vercel.app/api/ask';
+  const API = '/api/ask';
   const SYSTEM = '你是「AI 炼丹房」（一个讲大模型原理、微调、部署与工具选型的中文技术博客）的问答助手。'
     + '回答用简体中文，简洁实用，能给出可动手验证的命令或步骤就给；不确定的事情直说不确定，不要编造具体数字。';
 
@@ -49,7 +49,7 @@
     throw lastErr || new Error('云服务暂时没有可用模型');
   }
 
-  /* 备用通道：境外自建接口 */
+  /* 走同域 /api/ask（Cloudflare Worker → 智谱） */
   function askRemote(q) {
     return fetch(API, {
       method: 'POST',

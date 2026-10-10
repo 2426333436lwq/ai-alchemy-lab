@@ -68,8 +68,6 @@
     /* 离开文章页时卸掉目录高亮与进度条的滚动监听（必须在滚动重置之前，
        否则 detach 里算进度时拿到的已经是归零后的 scrollY） */
     if (window.ReadingAssist) ReadingAssist.detach();
-    /* 离开文章页时销毁 Waline 实例，否则下一次进文章会看到上一页的评论 */
-    if (window.Views && Views.unmountWaline) Views.unmountWaline();
 
     /* 换页必须回到顶部：否则新页面会继承上一页的滚动位置，
        表现为「打开新文章却停在半中间」+ 阅读进度被写成上一页的位置 */

@@ -24,11 +24,9 @@
   <!-- 第三方库全部本地自托管（assets/vendor/），不依赖任何境外 CDN，国内外网络都能加载 -->
   <!-- ?v= 是缓存版本号：改了 JS/CSS 后换一个值，Service Worker 与浏览器就会立刻拉新版，
        不用等「陈旧优先 + 后台更新」慢慢生效。sw.js 里的 VERSION 也要一起 bump -->
-  <link rel="stylesheet" id="hljs-light" href="assets/vendor/hljs-github.min.css?v=20261010-2">
-  <link rel="stylesheet" id="hljs-dark" href="assets/vendor/hljs-github-dark.min.css?v=20261010-2" disabled>
-  <link rel="stylesheet" href="assets/css/style.css?v=20261010-2">
-  <!-- 只有 Waline 评论模式会用到；当前 COMMENT_BACKEND='builtin'（站内评论），切回 waline 时别删这行 -->
-  <link rel="stylesheet" href="assets/vendor/waline.css?v=20261010-2">
+  <link rel="stylesheet" id="hljs-light" href="assets/vendor/hljs-github.min.css?v=20261010-3">
+  <link rel="stylesheet" id="hljs-dark" href="assets/vendor/hljs-github-dark.min.css?v=20261010-3" disabled>
+  <link rel="stylesheet" href="assets/css/style.css?v=20261010-3">
 </head>
 <body>
   <div id="read-progress" class="read-progress hidden"><i id="read-progress-bar"></i></div>
@@ -121,7 +119,7 @@
   <footer id="site-footer">
     <div class="footer-inner">
       <p class="footer-brand"><span id="footer-brand">AI 炼丹房</span> · <span id="footer-note">丹成不必在我，火候自有记录</span></p>
-      <p class="footer-tech">文章数据存于云端数据库 · 图片与附件存于云端对象存储 · 支持邮箱登录与附件下载</p>
+      <p class="footer-tech">文章与评论存于本站数据库（Cloudflare D1）· AI 问答由 GLM-4-Flash 提供</p>
     </div>
   </footer>
 
@@ -136,21 +134,18 @@
 
   <div id="toast-root" aria-live="polite"></div>
 
-  <!-- WorkBuddy 云 SDK 已随静态托管迁移移除：数据库连接、登录、后台都不再需要它。
-       文件仍留在 assets/vendor/ 备用，需要时把下面这行加回来即可：
-       <script src="assets/vendor/workbuddy-cloud-sdk.js?v=20261010-2"></script> -->
-  <script src="assets/vendor/marked.min.js?v=20261010-2"></script>
-  <script src="assets/vendor/purify.min.js?v=20261010-2"></script>
-  <script src="assets/vendor/highlight.min.js?v=20261010-2"></script>
-  <script src="assets/js/config.js?v=20261010-2"></script>
-  <script src="assets/js/util.js?v=20261010-2"></script>
-  <script src="assets/js/markdown.js?v=20261010-2"></script>
-  <script src="assets/js/api.js?v=20261010-2"></script>
-  <script src="assets/js/theme.js?v=20261010-2"></script>
-  <script src="assets/js/views.js?v=20261010-2"></script>
-  <script src="assets/js/ask-widget.js?v=20261010-2"></script>
-  <script src="assets/js/auth.js?v=20261010-2"></script>
-  <script src="assets/js/admin.js?v=20261010-2"></script>
-  <script src="assets/js/app.js?v=20261010-2"></script>
+  <script src="assets/vendor/marked.min.js?v=20261010-3"></script>
+  <script src="assets/vendor/purify.min.js?v=20261010-3"></script>
+  <script src="assets/vendor/highlight.min.js?v=20261010-3"></script>
+  <script src="assets/js/config.js?v=20261010-3"></script>
+  <script src="assets/js/util.js?v=20261010-3"></script>
+  <script src="assets/js/markdown.js?v=20261010-3"></script>
+  <script src="assets/js/api.js?v=20261010-3"></script>
+  <script src="assets/js/theme.js?v=20261010-3"></script>
+  <script src="assets/js/views.js?v=20261010-3"></script>
+  <script src="assets/js/ask-widget.js?v=20261010-3"></script>
+  <script src="assets/js/auth.js?v=20261010-3"></script>
+  <script src="assets/js/admin.js?v=20261010-3"></script>
+  <script src="assets/js/app.js?v=20261010-3"></script>
 </body>
 </html>

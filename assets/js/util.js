@@ -137,8 +137,8 @@
     return (
       '<div class="card" style="max-width:640px;margin:40px auto;padding:26px 28px">' +
       '<h1 class="login-title" style="margin-bottom:10px">' + Util.escapeHtml(title || '这个功能需要服务端') + '</h1>' +
-      '<p class="login-sub" style="margin-bottom:14px">本站已改为静态托管（文章数据直接来自 <code>data/articles.json</code>），' +
-      '没有数据库和账号体系，所以登录、后台管理、附件上传这类功能暂时关闭。</p>' +
+      '<p class="login-sub" style="margin-bottom:14px">本站目前只提供公开的文章、评论与问答，没有账号体系，' +
+      '所以登录、后台管理、附件上传这类功能暂未开放。</p>' +
       '<p class="form-hint">' + Util.escapeHtml(extra || '文章、搜索、标签、系列、评论与 AI 问答都不受影响，照常使用。') + '</p>' +
       '<p style="margin-top:18px"><a class="btn btn-gold btn-sm" href="#/">回到丹房首页</a></p>' +
       '</div>'

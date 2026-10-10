@@ -13,3 +13,10 @@ Thumbs.db
 
 # 依赖
 node_modules/
+
+# Cloudflare / Wrangler
+.wrangler/
+.dev.vars
+
+# 生成的 D1 seed（可由 scripts/migrate-to-d1.mjs 重新生成）
+scripts/seed.sql

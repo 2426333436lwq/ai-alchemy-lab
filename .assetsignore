@@ -1,0 +1,18 @@
+# Cloudflare Static Assets 忽略清单
+# 这些是「后厨」文件：工作区隐私、构建脚本、后端源码，不应作为公开静态资源。
+.workbuddy/
+scripts/
+deploy/
+articles/
+.wrangler/
+.git/
+node_modules/
+
+# 配置文件 / Worker 入口：只给构建用，别当资源公开
+wrangler.toml
+_worker.js
+.assetsignore
+.gitignore
+
+# 文档
+*.md
