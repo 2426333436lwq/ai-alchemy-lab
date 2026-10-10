@@ -18,7 +18,7 @@ git clone git@github.com:2426333436lwq/ai-alchemy-lab.git
 
 | 层 | 选型 |
 |---|---|
-| 前端 | 原生 JS + hash 路由，CDN 引入 marked / DOMPurify / highlight.js |
+| 前端 | 原生 JS + hash 路由，第三方库**全部本地自托管**在 `assets/vendor/`（marked / DOMPurify / highlight.js / Waline 客户端），不依赖任何境外 CDN，国内外网络都能加载 |
 | 数据 | 云数据库（PostgreSQL）+ 对象存储 + 邮箱认证，经浏览器 SDK 访问 |
 | 权限 | PostgreSQL RLS（行级安全），判断在数据库而非前端 |
 | 样式 | CSS 变量 + `<html data-theme>`，5 套主题 |
@@ -32,13 +32,32 @@ assets/css/style.css        全部样式（:root 定义变量，4 个主题覆�
 assets/js/
   config.js  util.js  markdown.js  api.js  theme.js
   views.js   auth.js  admin.js     app.js
+  ask-widget.js              右下角可拖拽的 AI 问答浮窗
+assets/vendor/              第三方库本地副本（不依赖 CDN）
+articles/                   文章 Markdown 源文件
+deploy/waline/              评论 + 问答后端（部署在 Vercel，见其中 DEPLOY-NOTES.md）
 a/<id>/index.html           预渲染文章页（脚本生成，勿手改）
-archive/  sitemap.xml  robots.txt   （脚本生成）
+archive/  sitemap.xml  robots.txt  feed.xml   （脚本生成）
 llms.txt  llms-full.txt     给 AI 读的站点索引与全文（脚本生成）
 manifest.webmanifest  sw.js  icons/   PWA
-articles/                   文章 Markdown 源文件
 .workbuddy/scripts/         维护脚本（快照生成、内容校验等）
+.workbuddy/scripts/cdp/     无头浏览器验证脚本（不装依赖，直接用系统 Edge）
 ```
+
+## 换一台电脑怎么继续
+
+整个项目是自包含的，只需要仓库里的东西：
+
+1. `git clone`（或整目录拷贝）到新机器；
+2. 装 Node 18+（只用于跑维护脚本，站点本身不需要构建）；
+3. 本地预览：在项目根目录起任意静态服务，例如 `python -m http.server 8080`，
+   然后打开 `http://127.0.0.1:8080/`（**必须走 http，直接双击 index.html 不行**，
+   SPA 与云服务 SDK 都需要正确 origin；登录功能只在已发布域名上可用）。
+
+运行时依赖只有两处是外部的，都不影响页面本身：
+
+- 云数据库 / 存储 / 认证：WorkBuddy 云服务（配置在 `assets/js/config.js`）
+- 评论后端：`deploy/waline/` 部署在 Vercel，地址写在 `assets/js/views.js` 的 `WALINE_SERVER`
 
 ## 给 AI 协作的说明
 
