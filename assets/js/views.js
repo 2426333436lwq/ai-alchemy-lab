@@ -5,8 +5,13 @@
   const Views = {};
   const homeState = { page: 1, search: '' };
 
-  /* 评论后端开关：'waline' = Waline（匿名可评），'builtin' = 站内自建评论（登录 + 审核） */
-  const COMMENT_BACKEND = 'waline';
+  /* 评论后端开关：
+     'builtin' —— 站内自建：读写走站点自己的数据库（国内可达、零成本、无需额外托管），
+                  需登录才能发，管理员可在后台审核/隐藏。当前默认。
+     'waline'  —— Waline：功能更花哨（表情/点赞/邮件通知），但后端托管在境外 Vercel，
+                  大陆网络访问不到时会降级成提示条。
+     两套代码都还留着，改这个常量就能整体切换。 */
+  const COMMENT_BACKEND = 'builtin';
 
   function articleCard(a) {
     const cover = a.cover
@@ -253,7 +258,17 @@
     } catch (e) { /* 附件加载失败不影响正文阅读 */ }
 
     renderShare(root, article);
-    mountWaline(root, article);
+
+    /* 评论区：两套后端互斥，只挂一个，避免页面上出现两个留言框 */
+    if (COMMENT_BACKEND === 'builtin') {
+      const wbox = Util.$('#waline', root);
+      if (wbox) wbox.remove();
+      renderComments(root, article);
+    } else {
+      const legacy = Util.$('#comment-box', root);
+      if (legacy) legacy.remove();
+      mountWaline(root, article);
+    }
 
     try {
       const related = await Api.relatedArticles(article, 3);
@@ -284,17 +299,10 @@
       }
     } catch (e) { /* 热门榜失败不影响阅读 */ }
 
-    /* 评论后端：'waline' 用 Waline，'builtin' 用站内自建评论（需登录 + 审核）。
-       切回自建只需把这个常量改掉，两边代码都还在 */
-    if (COMMENT_BACKEND === 'builtin') {
-      renderComments(root, article);
-    } else {
-      const legacy = Util.$('#comment-box', root);
-      if (legacy) legacy.remove();
-    }
+
   };
 
-  /* ---------------- Waline 评论 ---------------- */
+  /* ---------------- Waline 评论（后端托管在境外，当前未启用） ---------------- */
 
   /* 后端：Vercel 托管（境外）。国内若访问不到，评论区会走降级提示，不影响正文阅读 */
   const WALINE_SERVER = 'https://ai-alchemy-waline.vercel.app';
