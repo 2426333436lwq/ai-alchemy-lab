@@ -37,7 +37,10 @@ function tagsToStr(tags) {
 }
 
 const DDL = `-- 由 scripts/migrate-to-d1.mjs 生成，勿手改
-CREATE TABLE IF NOT EXISTS articles (
+-- articles 用 DROP + 重建：确保表结构与 _worker.js 完全一致
+-- （表若已存在但缺 series_order 列，CREATE IF NOT EXISTS 不会补列，会一直报 no such column）
+DROP TABLE IF EXISTS articles;
+CREATE TABLE articles (
   id INTEGER PRIMARY KEY,
   title TEXT NOT NULL,
   summary TEXT,
@@ -54,6 +57,7 @@ CREATE TABLE IF NOT EXISTS articles (
 CREATE INDEX IF NOT EXISTS idx_articles_status ON articles(status);
 CREATE INDEX IF NOT EXISTS idx_articles_created ON articles(created_at DESC);
 
+-- 评论表：已存在就不动，避免清掉真实评论
 CREATE TABLE IF NOT EXISTS comments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   article_id INTEGER NOT NULL,
