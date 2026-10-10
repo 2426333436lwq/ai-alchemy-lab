@@ -2048,6 +2048,23 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
 }
 .ask-msg.loading { opacity: 0.6; }
 
+/* 失败重试按钮（问答连不上时出现在机器人气泡里） */
+.ask-retry {
+  display: inline-block;
+  margin-top: 8px;
+  margin-left: 8px;
+  padding: 3px 12px;
+  border: 1px solid var(--cinnabar);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--cinnabar);
+  font-size: 13px;
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+.ask-retry:hover { background: var(--cinnabar); color: var(--btn-primary-text); }
+.ask-retry:disabled { opacity: 0.5; cursor: default; }
+
 .ask-input { display: flex; padding: 8px; border-top: 1px solid var(--line); gap: 6px; background: var(--card); }
 .ask-input input {
   flex: 1;

@@ -186,7 +186,10 @@
 
     const input = panel.querySelector('input');
     const sendBtn = panel.querySelector('.ask-input button');
+    let lastQuestion = null;
+
     async function run(q) {
+      lastQuestion = q;
       const bubble = addMsg('思考中…', 'bot', true);
       const finish = function (text) {
         bubble.classList.remove('loading');
@@ -208,7 +211,20 @@
             return;
           } catch (e2) { /* 落到下面的提示 */ }
         }
-        finish('问答服务现在有点忙，过一会儿再试试；也可以直接翻文章找答案。');
+        /* 失败提示 + 重试按钮：模型列表已经轮询过一遍都失败，多半是瞬时网络问题，
+           给用户一个不用重新打字的入口 */
+        bubble.classList.remove('loading');
+        bubble.textContent = '问答服务这会儿没连上，过一会儿再试试；也可以直接翻文章找答案。';
+        const retry = document.createElement('button');
+        retry.className = 'ask-retry';
+        retry.type = 'button';
+        retry.textContent = '重试';
+        retry.addEventListener('click', function () {
+          retry.disabled = true;
+          run(lastQuestion);
+        });
+        bubble.appendChild(retry);
+        panel.querySelector('.ask-msgs').scrollTop = 99999;
       }
     }
 

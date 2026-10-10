@@ -2,10 +2,11 @@
  * 策略：
  *   - 页面导航：网络优先，离线回退缓存（保证内容更新能被看到）
  *   - 站内静态资源（css/js/png/webmanifest）：陈旧优先 + 后台更新
- *   - CDN 固定版本库：缓存优先（URL 已带版本号，不会变内容）
+ *     —— 所以改了 JS/CSS 后必须同时做两件事：index.html 里资源 URL 的 ?v= 换新值，
+ *        以及把下面的 VERSION bump 一位（旧缓存在 activate 时整体删除）
  *   - 云数据接口与跨域请求：不拦截
  */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL_CACHE = 'alchemy-shell-' + VERSION;
 const ASSET_CACHE = 'alchemy-assets-' + VERSION;
 
