@@ -273,7 +273,7 @@
 
   /* ---------------- 文章（站长写） ---------------- */
 
-  Api.adminListArticles = async function () { return (await req('/admin/articles')) || []; };
+  Api.adminListArticles = async function () { return ((await req('/admin/articles')) || []).map(norm); };
   Api.createArticle = async function (payload) { return await req('/admin/articles', { method: 'POST', body: payload }); };
   Api.updateArticle = async function (id, payload) { return await req('/admin/articles/' + encodeURIComponent(id), { method: 'PUT', body: payload }); };
   Api.deleteArticle = async function (id) { await req('/admin/articles/' + encodeURIComponent(id), { method: 'DELETE' }); };
