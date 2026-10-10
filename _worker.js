@@ -556,10 +556,12 @@ async function handleAsk(request, env, cors) {
   // 3) 联网检索（用户开启时）
   let webBlock = '';
   let webFailed = false;
+  let webSources = [];
   if (webOn) {
     let results = [];
     try { results = await searchWeb(question); } catch (e) { results = []; }
     if (results.length) {
+      webSources = results.map(function (r) { return { title: r.title, url: r.url }; });
       webBlock = '\n【实时联网搜索结果】（用户开启了联网，请优先据此回答，并注明来源域名）\n' + results.map(function (r, i) {
         return (i + 1) + '. ' + r.title + ' — ' + r.snippet + ' (' + r.url + ')';
       }).join('\n');
@@ -600,7 +602,7 @@ async function handleAsk(request, env, cors) {
   });
   const data = await resp.json().catch(function () { return {}; });
   const answer = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '抱歉，暂时答不上来。';
-  return json({ answer: answer }, 200, cors);
+  return json({ answer: answer, sources: webSources }, 200, cors);
 }
 
 /* ============ 个人偏好（主题） ============ */
