@@ -130,7 +130,8 @@ function pageShell(opts) {
     '<meta name="twitter:title" content="' + esc(opts.title) + '">\n' +
     '<meta name="twitter:description" content="' + esc(opts.description) + '">\n' +
     '<link rel="stylesheet" href="' + opts.cssPath + '">\n' +
-    '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">\n' +
+    /* 高亮样式同样本地自托管，快照页不依赖境外 CDN */
+    '<link rel="stylesheet" href="' + (opts.hljsPath || (opts.cssPath || '').replace('css/style.css', 'vendor/hljs-github.min.css')) + '">\n' +
     '<script type="application/ld+json">' + ld + '</script>\n' +
     '<style>\n' +
     'body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}' +
@@ -207,6 +208,7 @@ function articlePage(a) {
     spa: spaOf(a),
     image: a.cover,
     cssPath: '../../assets/css/style.css',
+    hljsPath: '../../assets/vendor/hljs-github.min.css',
     published: a.created_at,
     modified: a.updated_at || a.created_at,
     body: body
@@ -232,6 +234,7 @@ function archivePage() {
     spa: BASE + '/',
     ldType: 'WebPage',
     cssPath: '../assets/css/style.css',
+    hljsPath: '../assets/vendor/hljs-github.min.css',
     body: body
   });
 }

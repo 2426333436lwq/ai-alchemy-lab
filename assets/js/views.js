@@ -296,8 +296,10 @@
 
   /* ---------------- Waline 评论 ---------------- */
 
+  /* 后端：Vercel 托管（境外）。国内若访问不到，评论区会走降级提示，不影响正文阅读 */
   const WALINE_SERVER = 'https://ai-alchemy-waline.vercel.app';
-  const WALINE_JS = 'https://unpkg.com/@waline/client@v3/dist/waline.umd.js';
+  /* 客户端脚本本地自托管，不再走 unpkg（境外 CDN 国内不稳定） */
+  const WALINE_JS = 'assets/vendor/waline.umd.js';
   let walineInstance = null;
   let walineLoader = null;
 
@@ -318,31 +320,70 @@
     return walineLoader;
   }
 
-  function mountWaline(root, article) {
-    const box = Util.$('#waline', root);
-    if (!box) return;
-    loadWaline().then(function (Waline) {
-      /* SPA 换文章：必须先销毁旧实例，否则评论区串台 */
-      if (walineInstance) {
-        walineInstance.destroy();
-        walineInstance = null;
-      }
-      box.innerHTML = '';
-      /* v3 的 UMD 导出是命名空间对象，入口是 init()（不是 new Waline）；
-         3.16.0 认的是 serverURL 这个键，写 server 会直接抛 "Option 'serverURL' is missing!" */
-      walineInstance = Waline.init({
-        el: '#waline',
-        serverURL: WALINE_SERVER,
-        /* 每篇独立 path：SPA 是 hash 路由，不显式传会全都落在 / 上 */
-        path: '/a/' + article.id + '/',
-        locale: { placeholder: '留下你的炼丹心得...' },
-        dark: 'auto',
-        reaction: false,
-        commentCount: true,
-        pageSize: 10
+  /* 评论服务部署在境外，先探一下连通性：连不上就直接给降级提示，
+     不要让用户对着一个永远加载中的空框发呆（正文阅读完全不受影响） */
+  function walineReachable() {
+    return new Promise(function (resolve) {
+      let done = false;
+      const finish = function (ok) {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        resolve(ok);
+      };
+      const timer = setTimeout(function () { finish(false); }, 6000);
+      fetch(WALINE_SERVER + '/api/comment?type=count&path=/ping', {
+        method: 'GET',
+        cache: 'no-store',
+      }).then(function (r) { finish(r.ok); }).catch(function () { finish(false); });
+    });
+  }
+
+  function showWalineFallback(box, article) {
+    box.innerHTML =
+      '<div class="card waline-fallback">' +
+      '<p>评论服务暂时连不上（部署在境外，部分地区网络可能访问不到）。</p>' +
+      '<p class="muted">文章正文不受影响，可以正常阅读；换个网络环境再打开就能看到评论。</p>' +
+      '<button class="btn btn-sm" id="waline-retry" type="button">重试</button>' +
+      '</div>';
+    const btn = Util.$('#waline-retry', box);
+    if (btn) {
+      btn.addEventListener('click', function () {
+        box.innerHTML = '<div class="card waline-fallback">正在重连…</div>';
+        mountWaline(box, article);
       });
-    }).catch(function () {
-      box.innerHTML = '<div class="card waline-fallback">评论组件没能加载出来，可能是网络不通，刷新页面再试试。</div>';
+    }
+  }
+
+  function mountWaline(root, article) {
+    const box = Util.$('#waline', root) || (root && root.id === 'waline' ? root : null);
+    if (!box) return;
+    box.innerHTML = '<div class="card waline-fallback">正在连接评论服务…</div>';
+    walineReachable().then(function (ok) {
+      if (!ok) { showWalineFallback(box, article); return; }
+      loadWaline().then(function (Waline) {
+        /* SPA 换文章：必须先销毁旧实例，否则评论区串台 */
+        if (walineInstance) {
+          walineInstance.destroy();
+          walineInstance = null;
+        }
+        box.innerHTML = '';
+        /* v3 的 UMD 导出是命名空间对象，入口是 init()（不是 new Waline）；
+           3.16.0 认的是 serverURL 这个键，写 server 会直接抛 "Option 'serverURL' is missing!" */
+        walineInstance = Waline.init({
+          el: '#waline',
+          serverURL: WALINE_SERVER,
+          /* 每篇独立 path：SPA 是 hash 路由，不显式传会全都落在 / 上 */
+          path: '/a/' + article.id + '/',
+          locale: { placeholder: '留下你的炼丹心得...' },
+          dark: 'auto',
+          reaction: false,
+          commentCount: true,
+          pageSize: 10
+        });
+      }).catch(function () {
+        showWalineFallback(box, article);
+      });
     });
   }
 

@@ -2,7 +2,59 @@
 (function () {
   'use strict';
 
+  /* 兜底：境外 Vercel 上的自建接口（境内可能访问不到，故仅作备用） */
   const API = 'https://ai-alchemy-waline.vercel.app/api/ask';
+  const SYSTEM = '你是「AI 炼丹房」（一个讲大模型原理、微调、部署与工具选型的中文技术博客）的问答助手。'
+    + '回答用简体中文，简洁实用，能给出可动手验证的命令或步骤就给；不确定的事情直说不确定，不要编造具体数字。';
+
+  function hasCloudLlm() {
+    return !!(window.cloud && cloud.llm && cloud.llm.chat && cloud.llm.chat.completions);
+  }
+
+  /* 模型按「快 → 稳」依次尝试；某个不可用就换下一个 */
+  const MODELS = ['deepseek-v4-flash', 'hunyuan-chat', 'auto'];
+
+  /* 主通道：WorkBuddy 云服务大模型，域名与本站一致（国内直连可达） */
+  async function askCloud(q, onDelta) {
+    let lastErr = null;
+    for (let i = 0; i < MODELS.length; i++) {
+      try {
+        const stream = await cloud.llm.chat.completions.create({
+          model: MODELS[i],
+          messages: [
+            { role: 'system', content: SYSTEM },
+            { role: 'user', content: q }
+          ],
+          stream: true
+        });
+        let full = '';
+        for await (const chunk of stream) {
+          const choices = (chunk && chunk.choices) || [];
+          const delta = choices[0] && choices[0].delta;
+          const piece = delta && (delta.content || delta.text);
+          if (piece) {
+            full += piece;
+            if (onDelta) onDelta(full);
+          }
+        }
+        if (full.trim()) return full;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    throw lastErr || new Error('云服务暂时没有可用模型');
+  }
+
+  /* 备用通道：境外自建接口 */
+  function askRemote(q) {
+    return fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) { return data.answer || data.error || '出错了'; });
+  }
   const POS_KEY = 'alch.ask.fabPos'; // 拖动后的位置，存本机
   const EDGE = 10;     // 距离视口边缘的最小留白
   const DRAG_MIN = 5;  // 超过这个位移才算拖动，否则视为点击
@@ -131,26 +183,38 @@
 
     const input = panel.querySelector('input');
     const sendBtn = panel.querySelector('.ask-input button');
+    async function run(q) {
+      const bubble = addMsg('思考中…', 'bot', true);
+      const finish = function (text) {
+        bubble.classList.remove('loading');
+        bubble.textContent = text;
+        panel.querySelector('.ask-msgs').scrollTop = 99999;
+      };
+      try {
+        if (hasCloudLlm()) {
+          const answer = await askCloud(q, function (partial) {
+            bubble.textContent = partial;
+            panel.querySelector('.ask-msgs').scrollTop = 99999;
+          });
+          if (answer && answer.trim()) { finish(answer); return; }
+          throw new Error('云服务返回空内容');
+        }
+        finish(await askRemote(q));
+      } catch (err) {
+        try {
+          finish(await askRemote(q));
+        } catch (e2) {
+          finish('连不上问答服务，请检查网络后再试；也可以直接翻文章或用邮箱联系站长。');
+        }
+      }
+    }
+
     function send() {
       const q = input.value.trim();
       if (!q) return;
       input.value = '';
       addMsg(q, 'user');
-      const loading = addMsg('思考中...', 'bot', true);
-      fetch(API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: q }),
-      })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          loading.remove();
-          addMsg(data.answer || data.error || '出错了', 'bot');
-        })
-        .catch(function () {
-          loading.remove();
-          addMsg('网络错误，再试一次', 'bot');
-        });
+      run(q);
     }
     sendBtn.addEventListener('click', send);
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter') send(); });
