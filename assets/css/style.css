@@ -648,6 +648,33 @@ a:hover { color: var(--cinnabar-deep); }
 .form-switch { text-align: center; margin-top: 16px; font-size: 13.5px; color: var(--ink-faint); }
 .form-switch a { cursor: pointer; }
 
+/* 登录面板：记住密码 + 忘记密码 一行 */
+.pwd-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -6px 0 16px;
+  font-size: 13.5px;
+}
+.check-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--ink-soft);
+  user-select: none;
+}
+.check-line input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--cinnabar);
+}
+.pwd-row a { cursor: pointer; font-size: 13.5px; }
+#remember-hint { margin-top: -8px; margin-bottom: 14px; line-height: 1.6; }
+
 /* ---------------- 管理后台 ---------------- */
 
 .admin-head {
