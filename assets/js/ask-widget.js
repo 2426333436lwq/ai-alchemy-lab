@@ -49,15 +49,19 @@
     throw lastErr || new Error('云服务暂时没有可用模型');
   }
 
-  /* 走同域 /api/ask（Cloudflare Worker → 智谱） */
+  /* 走同域 /api/ask（Cloudflare Worker → 智谱）；失败抛错，交给上层显示重试按钮 */
   function askRemote(q) {
     return fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question: q })
     })
-      .then(function (r) { return r.json(); })
-      .then(function (data) { return data.answer || data.error || '出错了'; });
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (data) {
+        if (data && typeof data.answer === 'string' && data.answer.trim()) return data.answer;
+        const msg = (data && data.error && data.error.message) || (typeof data.error === 'string' ? data.error : '');
+        throw new Error(msg || '问答服务没有返回内容');
+      });
   }
   const POS_KEY = 'alch.ask.fabPos'; // 拖动后的位置，存本机
   const EDGE = 10;     // 距离视口边缘的最小留白
