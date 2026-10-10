@@ -20,3 +20,5 @@ node_modules/
 
 # 生成的 D1 seed（可由 scripts/migrate-to-d1.mjs 重新生成）
 scripts/seed.sql
+# 含密码哈希的账号 seed（由 scripts/set-owner.mjs 生成）
+scripts/seed-owner.sql
