@@ -30,75 +30,86 @@
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    const path = url.pathname;
-    const method = request.method;
 
     const cors = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
-    if (method === 'OPTIONS') return new Response(null, { headers: cors });
+    if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
 
     try {
-      // ---------- auth ----------
-      if (path === '/api/auth/config' && method === 'GET') return authConfig(env, cors);
-      if (path === '/api/auth/register' && method === 'POST') return authRegister(request, env, cors);
-      if (path === '/api/auth/login' && method === 'POST') return authLogin(request, env, cors);
-      if (path === '/api/auth/logout' && method === 'POST') return authLogout(request, env, cors);
-      if (path === '/api/auth/session' && method === 'GET') return authSession(request, env, cors);
-      if (path === '/api/auth/password' && method === 'POST') return authChangePassword(request, env, cors);
-      if (path === '/api/auth/otp' && method === 'POST') return authSendOtp(request, env, cors);
-      if (path === '/api/auth/otp/verify' && method === 'POST') return authVerifyOtp(request, env, cors);
-      if (path === '/api/auth/reset' && method === 'POST') return authReset(request, env, cors);
-
-      // ---------- 公开内容 ----------
-      if (path === '/api/articles' && method === 'GET') return listArticles(env, url, cors);
-      const artM = path.match(/^\/api\/articles\/(\d+)$/);
-      if (artM && method === 'GET') return getArticle(env, artM[1], cors);
-      if (path === '/api/comments') {
-        if (method === 'POST') return createComment(request, env, cors);
-        if (method === 'GET') return listComments(env, url, cors);
-      }
-      if (path === '/api/ask' && method === 'POST') return handleAsk(request, env, cors);
-      if (path === '/api/series' && method === 'GET') return listSeries(env, cors);
-      const serM = path.match(/^\/api\/series\/(\d+)$/);
-      if (serM && method === 'GET') return getSeries(env, serM[1], cors);
-      const serArtM = path.match(/^\/api\/series\/(\d+)\/articles$/);
-      if (serArtM && method === 'GET') return listSeriesArticles(env, serArtM[1], cors);
-      if (path === '/api/site-settings' && method === 'GET') return getSettings(env, cors);
-      if (path === '/api/storage/blob' && method === 'GET') return storageBlob(env, url, cors);
-
-      // ---------- 个人偏好 ----------
-      if (path === '/api/me/theme') {
-        if (method === 'GET') return themeGet(request, env, cors);
-        if (method === 'POST') return themePut(request, env, cors);
-      }
-
-      // ---------- 存储 ----------
-      if (path === '/api/storage' && method === 'POST') return storagePut(request, env, cors);
-      if (path === '/api/storage/list' && method === 'GET') return storageList(request, env, cors);
-      if (path === '/api/storage/delete' && method === 'POST') return storageDelete(request, env, cors);
-
-      // ---------- 附件 ----------
-      if (path === '/api/attachments') {
-        if (method === 'GET') return listAttachments(env, url, cors);
-        if (method === 'POST') return addAttachment(request, env, cors);
-      }
-      const attM = path.match(/^\/api\/attachments\/(\d+)$/);
-      if (attM && method === 'DELETE') return deleteAttachment(request, env, attM[1], cors);
-
-      // ---------- 后台 ----------
-      // 认领站长放在守卫之前：任何已登录用户都能尝试，仅在「尚无站长」时成功
-      if (path === '/api/admin/claim' && method === 'POST') return adminClaim(request, env, cors);
-      if (path.indexOf('/api/admin/') === 0) return handleAdmin(request, env, url, cors);
+      /* 必须 await：routeApi 返回 Promise，不 await 的话内部 reject 会逃出 try/catch，
+         变成 Cloudflare「error code: 1101」，前端只能看到笼统的失败提示 */
+      const routed = await routeApi(request, env, url, cors);
+      if (routed) return routed;
     } catch (err) {
-      return json({ error: 'server_error', message: String((err && err.message) || err) }, 500, cors);
+      return json({ error: { message: String((err && err.message) || err) } }, 500, cors);
     }
 
     return env.ASSETS.fetch(request);
   },
 };
+
+/* 路由：命中返回 Response，未命中返回 null（交给静态资源） */
+async function routeApi(request, env, url, cors) {
+  const path = url.pathname;
+  const method = request.method;
+
+  // ---------- auth ----------
+  if (path === '/api/auth/config' && method === 'GET') return authConfig(env, cors);
+  if (path === '/api/auth/register' && method === 'POST') return authRegister(request, env, cors);
+  if (path === '/api/auth/login' && method === 'POST') return authLogin(request, env, cors);
+  if (path === '/api/auth/logout' && method === 'POST') return authLogout(request, env, cors);
+  if (path === '/api/auth/session' && method === 'GET') return authSession(request, env, cors);
+  if (path === '/api/auth/password' && method === 'POST') return authChangePassword(request, env, cors);
+  if (path === '/api/auth/otp' && method === 'POST') return authSendOtp(request, env, cors);
+  if (path === '/api/auth/otp/verify' && method === 'POST') return authVerifyOtp(request, env, cors);
+  if (path === '/api/auth/reset' && method === 'POST') return authReset(request, env, cors);
+
+  // ---------- 公开内容 ----------
+  if (path === '/api/articles' && method === 'GET') return listArticles(env, url, cors);
+  const artM = path.match(/^\/api\/articles\/(\d+)$/);
+  if (artM && method === 'GET') return getArticle(env, artM[1], cors);
+  if (path === '/api/comments') {
+    if (method === 'POST') return createComment(request, env, cors);
+    if (method === 'GET') return listComments(env, url, cors);
+  }
+  if (path === '/api/ask' && method === 'POST') return handleAsk(request, env, cors);
+  if (path === '/api/series' && method === 'GET') return listSeries(env, cors);
+  const serM = path.match(/^\/api\/series\/(\d+)$/);
+  if (serM && method === 'GET') return getSeries(env, serM[1], cors);
+  const serArtM = path.match(/^\/api\/series\/(\d+)\/articles$/);
+  if (serArtM && method === 'GET') return listSeriesArticles(env, serArtM[1], cors);
+  if (path === '/api/site-settings' && method === 'GET') return getSettings(env, cors);
+  if (path === '/api/storage/blob' && method === 'GET') return storageBlob(env, url, cors);
+
+  // ---------- 个人偏好 ----------
+  if (path === '/api/me/theme') {
+    if (method === 'GET') return themeGet(request, env, cors);
+    if (method === 'POST') return themePut(request, env, cors);
+  }
+
+  // ---------- 存储 ----------
+  if (path === '/api/storage' && method === 'POST') return storagePut(request, env, cors);
+  if (path === '/api/storage/list' && method === 'GET') return storageList(request, env, cors);
+  if (path === '/api/storage/delete' && method === 'POST') return storageDelete(request, env, cors);
+
+  // ---------- 附件 ----------
+  if (path === '/api/attachments') {
+    if (method === 'GET') return listAttachments(env, url, cors);
+    if (method === 'POST') return addAttachment(request, env, cors);
+  }
+  const attM = path.match(/^\/api\/attachments\/(\d+)$/);
+  if (attM && method === 'DELETE') return deleteAttachment(request, env, attM[1], cors);
+
+  // ---------- 后台 ----------
+  // 认领站长放在守卫之前：任何已登录用户都能尝试，仅在「尚无站长」时成功
+  if (path === '/api/admin/claim' && method === 'POST') return adminClaim(request, env, cors);
+  if (path.indexOf('/api/admin/') === 0) return handleAdmin(request, env, url, cors);
+
+  return null;
+}
 
 /* ============ 基础工具 ============ */
 
