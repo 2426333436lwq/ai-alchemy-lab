@@ -412,7 +412,7 @@ async function createComment(request, env, cors) {
 /* ============ 系列 / 设置（公开） ============ */
 
 async function listSeries(env, cors) {
-  const { results } = await env.DB.prepare('SELECT * FROM series ORDER BY sort_order ASC, id ASC').all();
+  const { results } = await env.DB.prepare("SELECT * FROM series WHERE (status IS NULL OR status = 'published') ORDER BY sort_order ASC, id ASC").all();
   const counts = await env.DB.prepare(
     "SELECT series_id, COUNT(*) AS c FROM articles WHERE status = 'published' AND series_id IS NOT NULL GROUP BY series_id"
   ).all();
@@ -666,8 +666,8 @@ async function handleAdmin(request, env, url, cors) {
   if (path === '/api/admin/series' && method === 'POST') {
     const b = await readBody(request);
     const row = await env.DB.prepare(
-      'INSERT INTO series (name, slug, icon, summary, sort_order, updated_at) VALUES (?, ?, ?, ?, ?, datetime(\'now\')) RETURNING *'
-    ).bind(b.name || '', b.slug || '', b.icon || '', b.summary || '', Number(b.sort_order) || 99).first();
+      "INSERT INTO series (name, slug, icon, summary, sort_order, status, updated_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now')) RETURNING *"
+    ).bind(b.name || '', b.slug || '', b.icon || '', b.summary || '', Number(b.sort_order) || 99, b.status || 'published').first();
     return ok(row, cors);
   }
   const serId = path.match(/^\/api\/admin\/series\/(\d+)$/);
@@ -677,8 +677,8 @@ async function handleAdmin(request, env, url, cors) {
     if (!cur) return fail('系列不存在', 404, cors);
     const merged = Object.assign({}, cur, b);
     const row = await env.DB.prepare(
-      "UPDATE series SET name = ?, slug = ?, icon = ?, summary = ?, sort_order = ?, updated_at = datetime('now') WHERE id = ? RETURNING *"
-    ).bind(merged.name || '', merged.slug || '', merged.icon || '', merged.summary || '', Number(merged.sort_order) || 99, serId[1]).first();
+      "UPDATE series SET name = ?, slug = ?, icon = ?, summary = ?, sort_order = ?, status = ?, updated_at = datetime('now') WHERE id = ? RETURNING *"
+    ).bind(merged.name || '', merged.slug || '', merged.icon || '', merged.summary || '', Number(merged.sort_order) || 99, merged.status || 'published', serId[1]).first();
     return ok(row, cors);
   }
   if (serId && method === 'DELETE') {

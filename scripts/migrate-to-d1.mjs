@@ -117,6 +117,7 @@ CREATE TABLE IF NOT EXISTS series (
   icon TEXT,
   summary TEXT,
   sort_order INTEGER DEFAULT 99,
+  status TEXT DEFAULT 'published',
   updated_at TEXT
 );
 CREATE TABLE IF NOT EXISTS site_settings (
@@ -167,8 +168,8 @@ const artRows = articles.map(function (a) {
 
 /* ---- 系列 ---- */
 const serRows = series.map(function (s) {
-  return 'INSERT OR REPLACE INTO series (id, name, slug, icon, summary, sort_order, updated_at) VALUES (' +
-    [num(s.id, 0), q(s.name), q(s.slug || ''), q(s.icon || ''), q(s.summary || ''), num(s.sort_order, 99), "datetime('now')"].join(', ') + ');';
+  return 'INSERT OR REPLACE INTO series (id, name, slug, icon, summary, sort_order, status, updated_at) VALUES (' +
+    [num(s.id, 0), q(s.name), q(s.slug || ''), q(s.icon || ''), q(s.summary || ''), num(s.sort_order, 99), q(s.status || 'published'), "datetime('now')"].join(', ') + ');';
 });
 
 /* ---- 站点设置 ---- */
