@@ -76,7 +76,6 @@ async function routeApi(request, env, url, cors) {
     if (method === 'GET') return listComments(env, url, cors);
   }
   if (path === '/api/ask' && method === 'POST') return handleAsk(request, env, cors);
-  if (path === '/api/_debug_search' && method === 'GET') return debugSearch(env, url, cors);
   if (path === '/api/series' && method === 'GET') return listSeries(env, cors);
   const serM = path.match(/^\/api\/series\/(\d+)$/);
   if (serM && method === 'GET') return getSeries(env, serM[1], cors);
@@ -613,25 +612,6 @@ async function handleAsk(request, env, cors) {
   const data = await resp.json().catch(function () { return {}; });
   const answer = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '抱歉，暂时答不上来。';
   return json({ answer: answer, sources: webSources }, 200, cors);
-}
-
-/* 临时诊断：从 Cloudflare 出口探测两个检索源的返回（用完删） */
-async function debugSearch(env, url, cors) {
-  const q = url.searchParams.get('q') || 'test';
-  const out = {};
-  try {
-    const r1 = await fetch('https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(q), {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AlchemyLab/1.0)', 'Accept-Language': 'zh-CN,zh;q=0.9' },
-    });
-    const t1 = await r1.text();
-    out.ddg = { status: r1.status, len: t1.length, hasResultLink: t1.indexOf('result-link') >= 0, head: t1.slice(0, 240) };
-  } catch (e) { out.ddg = { error: String((e && e.message) || e) }; }
-  try {
-    const r2 = await fetch('https://zh.wikipedia.org/w/api.php?action=query&list=search&format=json&utf8=1&srlimit=2&srsearch=' + encodeURIComponent(q));
-    const t2 = await r2.text();
-    out.wiki = { status: r2.status, len: t2.length, head: t2.slice(0, 240) };
-  } catch (e) { out.wiki = { error: String((e && e.message) || e) }; }
-  return json(out, 200, cors);
 }
 
 /* ============ 个人偏好（主题） ============ */

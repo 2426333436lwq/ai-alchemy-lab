@@ -58,10 +58,33 @@
     })
       .then(function (r) { return r.json().catch(function () { return {}; }); })
       .then(function (data) {
-        if (data && typeof data.answer === 'string' && data.answer.trim()) return data.answer;
+        if (data && typeof data.answer === 'string' && data.answer.trim()) {
+          return { answer: data.answer, sources: Array.isArray(data.sources) ? data.sources : [] };
+        }
         const msg = (data && data.error && data.error.message) || (typeof data.error === 'string' ? data.error : '');
         throw new Error(msg || '问答服务没有返回内容');
       });
+  }
+
+  /* 联网回答的「来源」列表（可点击） */
+  function appendSources(bubble, sources) {
+    const wrap = document.createElement('div');
+    wrap.className = 'ask-sources';
+    const label = document.createElement('span');
+    label.className = 'ask-sources-label';
+    label.textContent = '来源：';
+    wrap.appendChild(label);
+    sources.slice(0, 5).forEach(function (s) {
+      const a = document.createElement('a');
+      a.href = s.url || '#';
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = s.title || s.url || '链接';
+      wrap.appendChild(a);
+    });
+    bubble.appendChild(wrap);
+    const box = bubble.parentNode;
+    if (box) box.scrollTop = 99999;
   }
   const POS_KEY = 'alch.ask.fabPos'; // 拖动后的位置，存本机
   const EDGE = 10;     // 距离视口边缘的最小留白
@@ -230,7 +253,9 @@
       } catch (err) {
         if (FALLBACK_TO_REMOTE) {
           try {
-            finish(await askRemote(q, webOn));
+            const r = await askRemote(q, webOn);
+            finish(r.answer);
+            if (r.sources && r.sources.length) appendSources(bubble, r.sources);
             return;
           } catch (e2) { /* 落到下面的提示 */ }
         }

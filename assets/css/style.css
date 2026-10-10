@@ -2111,6 +2111,10 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
   border-color: var(--cinnabar);
   color: var(--btn-primary-text);
 }
+.ask-sources { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 12px; }
+.ask-sources-label { color: var(--ink-faint); }
+.ask-sources a { color: var(--cinnabar); text-decoration: none; }
+.ask-sources a:hover { text-decoration: underline; }
 
 @media (max-width: 600px) {
   #ask-panel { right: 12px; bottom: 80px; width: calc(100vw - 24px); }
