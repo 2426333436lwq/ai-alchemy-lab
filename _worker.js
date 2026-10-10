@@ -76,6 +76,7 @@ async function routeApi(request, env, url, cors) {
     if (method === 'GET') return listComments(env, url, cors);
   }
   if (path === '/api/ask' && method === 'POST') return handleAsk(request, env, cors);
+  if (path === '/api/_dbg' && method === 'GET') return dbgProviders(env, url, cors);
   if (path === '/api/series' && method === 'GET') return listSeries(env, cors);
   const serM = path.match(/^\/api\/series\/(\d+)$/);
   if (serM && method === 'GET') return getSeries(env, serM[1], cors);
@@ -614,6 +615,28 @@ async function handleAsk(request, env, cors) {
   const data = await resp.json().catch(function () { return {}; });
   const answer = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '抱歉，暂时答不上来。';
   return json({ answer: answer, sources: webSources }, 200, cors);
+}
+
+/* 临时：从 Cloudflare 出口测多个检索源（用完删） */
+async function dbgProviders(env, url, cors) {
+  const q = url.searchParams.get('q') || 'test';
+  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
+  const out = {};
+  async function probe(name, u, marks) {
+    try {
+      const r = await fetch(u, { headers: { 'User-Agent': UA, 'Accept-Language': 'zh-CN,zh;q=0.9' } });
+      const t = await r.text();
+      const hits = {};
+      marks.forEach(function (mk) { hits[mk] = t.indexOf(mk) >= 0; });
+      out[name] = { status: r.status, len: t.length, hits: hits };
+    } catch (e) { out[name] = { error: String((e && e.message) || e) }; }
+  }
+  await probe('ddglite', 'https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(q), ['result-link', 'result-snippet']);
+  await probe('ddghtml', 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(q), ['result__a', 'result__snippet']);
+  await probe('bing', 'https://www.bing.com/search?q=' + encodeURIComponent(q), ['b_algo']);
+  await probe('mojeek', 'https://www.mojeek.com/search?q=' + encodeURIComponent(q), ['results-standard', '<a class="ob"', 'results']);
+  await probe('wiki', 'https://zh.wikipedia.org/w/api.php?action=query&list=search&format=json&utf8=1&srlimit=2&srsearch=' + encodeURIComponent(q), ['"search"']);
+  return json(out, 200, cors);
 }
 
 /* ============ 个人偏好（主题） ============ */
