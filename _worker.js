@@ -443,12 +443,82 @@ async function getSettings(env, cors) {
 
 /* ============ AI 问答 ============ */
 
+/* 关键词切分：中文取 2 字滑窗 + 英文/数字词，用于轻量检索 */
+function askGrams(s) {
+  const t = String(s || '').replace(/[^\u4e00-\u9fa5a-zA-Z0-9]+/g, ' ').trim();
+  const out = {};
+  t.split(/\s+/).forEach(function (w) { if (w.length >= 2) out[w.toLowerCase()] = 1; });
+  const cjk = t.replace(/[^\u4e00-\u9fa5]/g, '');
+  for (let i = 0; i < cjk.length - 1; i++) out[cjk.slice(i, i + 2)] = 1;
+  return Object.keys(out);
+}
+
+/* AI 问答：轻量 RAG —— 每次从 D1 实时读全站文章清单 + 检索相关正文，再让模型据此回答。
+   因此文章一新增/修改，助手知识就自动更新（越写越懂本站）。 */
 async function handleAsk(request, env, cors) {
   const body = await readBody(request);
   const question = String(body.question || '').trim();
   if (!question) return fail('question is required', 400, cors);
   const apiKey = env.ZHIPU_API_KEY;
-  if (!apiKey) return fail('ZHIPU_API_KEY not set', 500, cors);
+  if (!apiKey) return fail('ZHIPU_API_KEY 未设置', 500, cors);
+
+  // 1) 全站已发布文章清单（不含正文，轻量）
+  const arts = (await env.DB.prepare(
+    "SELECT id, title, summary, tags, series_id, created_at FROM articles WHERE status = 'published' ORDER BY created_at DESC"
+  ).all()).results || [];
+  const series = (await env.DB.prepare('SELECT id, name FROM series').all()).results || [];
+  const seriesName = {};
+  series.forEach(function (s) { seriesName[s.id] = s.name; });
+
+  const index = arts.map(function (a) {
+    const tags = splitTags(a.tags).join('/');
+    const ser = a.series_id && seriesName[a.series_id] ? '｜系列：' + seriesName[a.series_id] : '';
+    const sum = String(a.summary || '').replace(/\s+/g, ' ').slice(0, 120);
+    return '[' + a.id + '] ' + a.title + '：' + sum + (tags ? '（标签：' + tags + '）' : '') + ser;
+  }).join('\n');
+
+  // 2) 轻量检索：按关键词命中挑最相关的 2 篇，取正文摘录
+  const grams = askGrams(question);
+  const hay = {};
+  arts.forEach(function (a) {
+    hay[a.id] = (a.title + ' ' + (a.summary || '') + ' ' + splitTags(a.tags).join(' ')).toLowerCase();
+  });
+  const ranked = arts.map(function (a) {
+    let score = 0;
+    grams.forEach(function (g) {
+      if (hay[a.id].indexOf(g) >= 0) score += 1;
+      if (String(a.title).toLowerCase().indexOf(g) >= 0) score += 2;
+    });
+    return { id: a.id, score: score };
+  }).filter(function (x) { return x.score > 0; }).sort(function (x, y) { return y.score - x.score; }).slice(0, 2);
+
+  let excerpts = '';
+  if (ranked.length) {
+    const ids = ranked.map(function (x) { return x.id; });
+    const placeholders = ids.map(function () { return '?'; }).join(',');
+    const rows = (await env.DB.prepare(
+      'SELECT id, title, content FROM articles WHERE id IN (' + placeholders + ')'
+    ).bind(...ids).all()).results || [];
+    excerpts = '\n与用户问题最相关的文章正文摘录（可据此回答，并点名是哪一篇）：\n' + rows.map(function (r) {
+      let c = String(r.content || '').replace(/```[\s\S]*?```/g, ' ').replace(/[#>*`]/g, ' ').replace(/\s+/g, ' ').trim();
+      if (c.length > 1200) c = c.slice(0, 1200) + '…';
+      return '《' + r.title + '》(id ' + r.id + ')：' + c;
+    }).join('\n\n');
+  }
+
+  const system = [
+    '你是「AI 炼丹房」博客的站内问答助手。这个博客是教学型中文技术博客，讲大模型原理、Prompt 与上下文工程、RAG、微调与 LoRA、模型选型、推理优化、Agent、本地部署等。',
+    '以下是本站**当前全部已发布文章**的清单（格式：[id] 标题：摘要（标签）｜系列），共 ' + arts.length + ' 篇：',
+    index || '（暂无文章）',
+    series.length ? '\n本站系列：' + series.map(function (s) { return s.name; }).join('、') : '',
+    excerpts,
+    '\n回答要求：',
+    '1) 简体中文，口语、简洁，控制在 250 字以内；',
+    '2) 只要问题与本站相关（如「一共几篇」「有没有讲 X 的」「X 是什么」「该怎么学」），就**基于上面的清单**回答，并尽量点名具体文章标题；',
+    '3) 问「一共几篇文章」时直接数清单，给出准确篇数；',
+    '4) 仅当清单里确实没有、且你也无法稳妥回答时，才说「这个博客暂时还没写到这块」，并可推荐相近的文章；',
+    '5) 绝不编造不存在的文章标题或数字。',
+  ].filter(Boolean).join('\n');
 
   const resp = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
     method: 'POST',
@@ -456,11 +526,11 @@ async function handleAsk(request, env, cors) {
     body: JSON.stringify({
       model: 'glm-4-flash',
       messages: [
-        { role: 'system', content: '你是「AI 炼丹房」博客的问答助手。内容涵盖大模型基础、Prompt工程、RAG、微调与LoRA、模型选型、推理优化、Agent。回答要求：1.中文通俗简洁 2.不知道就说"这个博客还没写到" 3.不要编造 4.回答控制在200字以内' },
+        { role: 'system', content: system },
         { role: 'user', content: question },
       ],
-      max_tokens: 500,
-      temperature: 0.7,
+      max_tokens: 700,
+      temperature: 0.5,
     }),
   });
   const data = await resp.json().catch(function () { return {}; });
