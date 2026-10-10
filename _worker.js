@@ -443,7 +443,7 @@ async function getSettings(env, cors) {
 
 /* ============ AI 问答 ============ */
 
-/* 关键词切分：中文取 2 字滑窗 + 英文/数字词，用于轻量检索 */
+/* 关键词切分：中文取 2 字滑窗 + 英文/数字词，用于站内轻量检索 */
 function askGrams(s) {
   const t = String(s || '').replace(/[^\u4e00-\u9fa5a-zA-Z0-9]+/g, ' ').trim();
   const out = {};
@@ -453,18 +453,69 @@ function askGrams(s) {
   return Object.keys(out);
 }
 
-/* AI 问答：轻量 RAG —— 每次从 D1 实时读全站文章清单 + 检索相关正文，再让模型据此回答。
-   因此文章一新增/修改，助手知识就自动更新（越写越懂本站）。 */
+/* ---- 联网检索工具 ---- */
+function decodeEntities(s) {
+  return String(s || '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#0*39;/g, "'").replace(/&#x27;/gi, "'")
+    .replace(/&nbsp;/g, ' ');
+}
+function stripTags(s) {
+  return decodeEntities(String(s || '').replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
+}
+function ddgUnwrap(href) {
+  const m = String(href).match(/[?&]uddg=([^&]+)/);
+  if (m) { try { return decodeURIComponent(m[1]); } catch (e) { return href; } }
+  return String(href).replace(/^\/\//, 'https://');
+}
+
+/* 联网检索：DuckDuckGo lite 优先，取不到再回落中文维基百科；返回 [{title,url,snippet}] */
+async function searchWeb(query) {
+  const out = [];
+  try {
+    const res = await fetch('https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(query), {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AlchemyLab/1.0)', 'Accept-Language': 'zh-CN,zh;q=0.9' },
+    });
+    if (res.ok) {
+      const html = await res.text();
+      const links = [];
+      const lre = /<a[^>]*href="([^"]*)"[^>]*class='result-link'[^>]*>([\s\S]*?)<\/a>/g;
+      let m;
+      while ((m = lre.exec(html)) && links.length < 6) links.push({ url: ddgUnwrap(m[1]), title: stripTags(m[2]) });
+      const snips = [];
+      const sre = /<td[^>]*class='result-snippet'[^>]*>([\s\S]*?)<\/td>/g;
+      while ((m = sre.exec(html)) && snips.length < 6) snips.push(stripTags(m[1]));
+      links.forEach(function (l, i) { out.push({ title: l.title, url: l.url, snippet: snips[i] || '' }); });
+    }
+  } catch (e) { /* 落维基兜底 */ }
+
+  if (!out.length) {
+    try {
+      const res = await fetch('https://zh.wikipedia.org/w/api.php?action=query&list=search&format=json&utf8=1&srlimit=4&srsearch=' + encodeURIComponent(query));
+      if (res.ok) {
+        const j = await res.json().catch(function () { return {}; });
+        ((j.query && j.query.search) || []).forEach(function (r) {
+          out.push({ title: r.title, url: 'https://zh.wikipedia.org/wiki/' + encodeURIComponent(r.title), snippet: stripTags(r.snippet) });
+        });
+      }
+    } catch (e) { /* 忽略 */ }
+  }
+  return out;
+}
+
+/* AI 问答：站内知识(轻量 RAG) + 站外常识 + 可选联网（web=true 时实时检索）。
+   站内清单每次实时从 D1 生成 → 发/改文章后助手知识自动更新。 */
 async function handleAsk(request, env, cors) {
   const body = await readBody(request);
   const question = String(body.question || '').trim();
+  const webOn = body.web === true || body.web === 'true' || body.web === 1;
   if (!question) return fail('question is required', 400, cors);
   const apiKey = env.ZHIPU_API_KEY;
   if (!apiKey) return fail('ZHIPU_API_KEY 未设置', 500, cors);
 
   // 1) 全站已发布文章清单（不含正文，轻量）
   const arts = (await env.DB.prepare(
-    "SELECT id, title, summary, tags, series_id, created_at FROM articles WHERE status = 'published' ORDER BY created_at DESC"
+    "SELECT id, title, summary, tags, series_id FROM articles WHERE status = 'published' ORDER BY created_at DESC"
   ).all()).results || [];
   const series = (await env.DB.prepare('SELECT id, name FROM series').all()).results || [];
   const seriesName = {};
@@ -473,20 +524,17 @@ async function handleAsk(request, env, cors) {
   const index = arts.map(function (a) {
     const tags = splitTags(a.tags).join('/');
     const ser = a.series_id && seriesName[a.series_id] ? '｜系列：' + seriesName[a.series_id] : '';
-    const sum = String(a.summary || '').replace(/\s+/g, ' ').slice(0, 120);
-    return '[' + a.id + '] ' + a.title + '：' + sum + (tags ? '（标签：' + tags + '）' : '') + ser;
+    const sum = String(a.summary || '').replace(/\s+/g, ' ').slice(0, 110);
+    return '[' + a.id + '] ' + a.title + '：' + sum + (tags ? '（' + tags + '）' : '') + ser;
   }).join('\n');
 
-  // 2) 轻量检索：按关键词命中挑最相关的 2 篇，取正文摘录
+  // 2) 站内检索：命中最高 1-2 篇，取正文摘录
   const grams = askGrams(question);
-  const hay = {};
-  arts.forEach(function (a) {
-    hay[a.id] = (a.title + ' ' + (a.summary || '') + ' ' + splitTags(a.tags).join(' ')).toLowerCase();
-  });
   const ranked = arts.map(function (a) {
+    const hay = (a.title + ' ' + (a.summary || '') + ' ' + splitTags(a.tags).join(' ')).toLowerCase();
     let score = 0;
     grams.forEach(function (g) {
-      if (hay[a.id].indexOf(g) >= 0) score += 1;
+      if (hay.indexOf(g) >= 0) score += 1;
       if (String(a.title).toLowerCase().indexOf(g) >= 0) score += 2;
     });
     return { id: a.id, score: score };
@@ -495,29 +543,46 @@ async function handleAsk(request, env, cors) {
   let excerpts = '';
   if (ranked.length) {
     const ids = ranked.map(function (x) { return x.id; });
-    const placeholders = ids.map(function () { return '?'; }).join(',');
     const rows = (await env.DB.prepare(
-      'SELECT id, title, content FROM articles WHERE id IN (' + placeholders + ')'
+      'SELECT id, title, content FROM articles WHERE id IN (' + ids.map(function () { return '?'; }).join(',') + ')'
     ).bind(...ids).all()).results || [];
-    excerpts = '\n与用户问题最相关的文章正文摘录（可据此回答，并点名是哪一篇）：\n' + rows.map(function (r) {
+    excerpts = '\n【站内相关文章摘录】\n' + rows.map(function (r) {
       let c = String(r.content || '').replace(/```[\s\S]*?```/g, ' ').replace(/[#>*`]/g, ' ').replace(/\s+/g, ' ').trim();
-      if (c.length > 1200) c = c.slice(0, 1200) + '…';
-      return '《' + r.title + '》(id ' + r.id + ')：' + c;
+      if (c.length > 1000) c = c.slice(0, 1000) + '…';
+      return '《' + r.title + '》：' + c;
     }).join('\n\n');
   }
 
+  // 3) 联网检索（用户开启时）
+  let webBlock = '';
+  let webFailed = false;
+  if (webOn) {
+    let results = [];
+    try { results = await searchWeb(question); } catch (e) { results = []; }
+    if (results.length) {
+      webBlock = '\n【实时联网搜索结果】（用户开启了联网，请优先据此回答，并注明来源域名）\n' + results.map(function (r, i) {
+        return (i + 1) + '. ' + r.title + ' — ' + r.snippet + ' (' + r.url + ')';
+      }).join('\n');
+    } else {
+      webFailed = true;
+      webBlock = '\n【联网检索：本次没取到结果】\n';
+    }
+  }
+
   const system = [
-    '你是「AI 炼丹房」博客的站内问答助手。这个博客是教学型中文技术博客，讲大模型原理、Prompt 与上下文工程、RAG、微调与 LoRA、模型选型、推理优化、Agent、本地部署等。',
-    '以下是本站**当前全部已发布文章**的清单（格式：[id] 标题：摘要（标签）｜系列），共 ' + arts.length + ' 篇：',
+    '你是「AI 炼丹房」博客的站内问答助手，同时也是一个通用的中文 AI 助手。博客是教学型中文技术博客，涵盖大模型原理、Prompt/上下文工程、RAG、微调与 LoRA、模型选型、推理优化、Agent、本地部署等。',
+    '\n【本站文章清单】共 ' + arts.length + ' 篇（[id] 标题：摘要（标签）｜系列）：',
     index || '（暂无文章）',
-    series.length ? '\n本站系列：' + series.map(function (s) { return s.name; }).join('、') : '',
+    series.length ? '本站系列：' + series.map(function (s) { return s.name; }).join('、') : '',
     excerpts,
-    '\n回答要求：',
-    '1) 简体中文，口语、简洁，控制在 250 字以内；',
-    '2) 只要问题与本站相关（如「一共几篇」「有没有讲 X 的」「X 是什么」「该怎么学」），就**基于上面的清单**回答，并尽量点名具体文章标题；',
-    '3) 问「一共几篇文章」时直接数清单，给出准确篇数；',
-    '4) 仅当清单里确实没有、且你也无法稳妥回答时，才说「这个博客暂时还没写到这块」，并可推荐相近的文章；',
-    '5) 绝不编造不存在的文章标题或数字。',
+    webBlock,
+    '\n【回答要求】',
+    '1) 简体中文，口语、简洁，尽量 300 字内。',
+    '2) 与本站相关的问题（如「一共几篇」「有没有讲 X 的」「X 是什么」「怎么学」）：优先依据上面的文章清单/摘录回答，并点名具体文章标题。',
+    '3) 站外/通用/时效性问题：直接用你的知识回答；若给了联网搜索结果，就优先依据搜索结果，并注明来源域名（如「据 github.com」）。',
+    '4) 不要因为博客里没写就拒绝站外问题；只有确实不知道且也没有可用搜索结果时，才说「这点我不太确定」。',
+    '5) 绝不编造不存在的文章标题、链接或数据。',
+    webFailed ? '6) 本次联网没搜到结果，请如实说明「联网暂时没搜到」，再基于已有知识回答。' : '',
   ].filter(Boolean).join('\n');
 
   const resp = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
@@ -529,8 +594,8 @@ async function handleAsk(request, env, cors) {
         { role: 'system', content: system },
         { role: 'user', content: question },
       ],
-      max_tokens: 700,
-      temperature: 0.5,
+      max_tokens: 800,
+      temperature: 0.6,
     }),
   });
   const data = await resp.json().catch(function () { return {}; });

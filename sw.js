@@ -6,7 +6,7 @@
  *        以及把下面的 VERSION bump 一位（旧缓存在 activate 时整体删除）
  *   - 云数据接口与跨域请求：不拦截
  */
-const VERSION = 'v7';
+const VERSION = 'v8';
 const SHELL_CACHE = 'alchemy-shell-' + VERSION;
 const ASSET_CACHE = 'alchemy-assets-' + VERSION;
 

@@ -50,11 +50,11 @@
   }
 
   /* 走同域 /api/ask（Cloudflare Worker → 智谱）；失败抛错，交给上层显示重试按钮 */
-  function askRemote(q) {
+  function askRemote(q, web) {
     return fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: q })
+      body: JSON.stringify({ question: q, web: !!web })
     })
       .then(function (r) { return r.json().catch(function () { return {}; }); })
       .then(function (data) {
@@ -120,8 +120,12 @@
     panel.id = 'ask-panel';
     panel.innerHTML =
       '<div class="ask-head">问炼丹房<span class="ask-close">×</span></div>' +
-      '<div class="ask-msgs"><div class="ask-msg bot">你好！我是炼丹房 AI，问我任何关于大模型的问题吧。</div></div>' +
-      '<div class="ask-input"><input type="text" placeholder="输入你的问题..." autocomplete="off"><button>发送</button></div>';
+      '<div class="ask-msgs"><div class="ask-msg bot">你好！我是炼丹房 AI。可以聊本站文章，也能答通用问题；点左下角「联网」还能让我搜实时资料。</div></div>' +
+      '<div class="ask-input">' +
+      '<button type="button" class="ask-web" id="ask-web-btn" title="开启后回答会联网检索实时信息">联网</button>' +
+      '<input type="text" placeholder="输入你的问题..." autocomplete="off">' +
+      '<button type="button" class="ask-send">发送</button>' +
+      '</div>';
     document.body.appendChild(panel);
 
     /* 恢复上次拖动的位置 */
@@ -190,7 +194,21 @@
     });
 
     const input = panel.querySelector('input');
-    const sendBtn = panel.querySelector('.ask-input button');
+    const sendBtn = panel.querySelector('.ask-send');
+    const webBtn = panel.querySelector('.ask-web');
+
+    /* 联网开关：状态存本机 */
+    let webOn = false;
+    try { webOn = localStorage.getItem('alch.ask.web') === '1'; } catch (e) { /* 忽略 */ }
+    function applyWeb() {
+      if (!webBtn) return;
+      webBtn.classList.toggle('on', webOn);
+      webBtn.textContent = webOn ? '联网·开' : '联网';
+      try { localStorage.setItem('alch.ask.web', webOn ? '1' : '0'); } catch (e) { /* 忽略 */ }
+    }
+    applyWeb();
+    if (webBtn) webBtn.addEventListener('click', function () { webOn = !webOn; applyWeb(); });
+
     let lastQuestion = null;
 
     async function run(q) {
@@ -212,7 +230,7 @@
       } catch (err) {
         if (FALLBACK_TO_REMOTE) {
           try {
-            finish(await askRemote(q));
+            finish(await askRemote(q, webOn));
             return;
           } catch (e2) { /* 落到下面的提示 */ }
         }

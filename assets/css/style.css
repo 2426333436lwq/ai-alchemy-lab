@@ -2082,7 +2082,7 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
 }
 .ask-input input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--focus-ring); }
 .ask-input input::placeholder { color: var(--ink-faint); }
-.ask-input button {
+.ask-input .ask-send {
   padding: 8px 14px;
   border: none;
   border-radius: 6px;
@@ -2093,7 +2093,24 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
   font-family: var(--font-body);
   transition: background 0.16s ease;
 }
-.ask-input button:hover { background: var(--cinnabar-deep); }
+.ask-input .ask-send:hover { background: var(--cinnabar-deep); }
+.ask-input .ask-web {
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink-faint);
+  cursor: pointer;
+  font-size: 12.5px;
+  font-family: var(--font-body);
+  white-space: nowrap;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+.ask-input .ask-web.on {
+  background: var(--cinnabar);
+  border-color: var(--cinnabar);
+  color: var(--btn-primary-text);
+}
 
 @media (max-width: 600px) {
   #ask-panel { right: 12px; bottom: 80px; width: calc(100vw - 24px); }
