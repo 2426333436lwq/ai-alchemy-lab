@@ -24,8 +24,8 @@
     if (footerNote && s.footer_note) footerNote.textContent = s.footer_note;
   };
 
+  /* 静态托管下也照样读 data/site.json（原来只在有云 SDK 时才读） */
   App.loadSettings = async function () {
-    if (!window.cloud) { App.applySettings(); return; }
     try {
       App.settings = await Api.getSiteSettings();
     } catch (e) { /* 读取失败用默认值 */ }
@@ -85,7 +85,9 @@
     App.updateFavBadge();
     if (window.Theme) Theme.syncRoute(parts);
 
-    if (window.CLOUD_SDK_MISSING) {
+    /* 静态托管下 window.cloud 本来就该是 null：只要文章数据用的是本地 JSON，
+       这个检查就不能拦路（原来是「SDK 没加载就整站报错」，迁移后已不需要） */
+    if (window.CLOUD_SDK_MISSING && !window.STATIC_DATA_MODE) {
       Util.setError(root, '云服务组件加载失败', '请检查网络连接后刷新页面。');
       return;
     }
@@ -187,7 +189,7 @@
   }
 
   App.refreshNav = async function () {
-    adminFlag = window.cloud ? await Api.isAdmin() : false;
+    adminFlag = await Api.isAdmin();
     ownerFlag = adminFlag ? await Api.isOwner() : false;
     updateAdminEntries(parseHash());
   };

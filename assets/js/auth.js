@@ -41,6 +41,12 @@
   /* ---------------- 登录页 ---------------- */
 
   Auth.viewLogin = async function (root) {
+    /* 静态托管：没有云 SDK 就没有账号体系，直接给说明，不再渲染登录表单 */
+    if (!window.cloud) {
+      root.innerHTML = Util.staticHostNotice('登录功能已关闭');
+      return;
+    }
+
     const session = await Util.getSession();
     if (session) { gotoAfterLogin(); return; }
 

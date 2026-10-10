@@ -5,7 +5,7 @@
  *   sitemap.xml / robots.txt / feed.xml
  * 用法：
  *   node .workbuddy/scripts/gen-static.mjs <articles.json> [站点根目录]
- */
+ * 域名可用第 3 个参数或 SITE_BASE 环境变量覆盖（迁移到 Cloudflare 后默认指向 workers.dev） */
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -17,7 +17,7 @@ const { marked } = require('marked');
 
 const dumpPath = process.argv[2];
 const siteDir = process.argv[3] || path.resolve(process.cwd());
-const BASE = 'https://ai-alchemy-lab.app.workbuddy.host';
+const BASE = process.argv[4] || process.env.SITE_BASE || 'https://ai-alchemy-lab.2426333436.workers.dev';
 const SITE = 'AI 炼丹房';
 const SLOGAN = '数据是药材 · 算力是炉火 · 调参是火候';
 

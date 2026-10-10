@@ -6,6 +6,11 @@
 
   /* 路由守卫：必须登录 + 站长身份；返回 { session, isAdmin } */
   async function guard(root) {
+    /* 静态托管：没有账号体系，后台整体不可用，就地说明而不是跳转到登录页 */
+    if (!window.cloud) {
+      root.innerHTML = Util.staticHostNotice('后台管理已关闭', '要继续用后台写作，就得让站点重新接上服务端（数据库 + 登录）。');
+      return null;
+    }
     const session = await Util.getSession();
     if (!session) {
       sessionStorage.setItem('redirectAfterLogin', location.hash || '#/admin');

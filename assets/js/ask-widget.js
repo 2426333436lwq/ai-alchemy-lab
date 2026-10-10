@@ -2,9 +2,10 @@
 (function () {
   'use strict';
 
-  /* 兜底：境外 Vercel 上的自建接口（智谱，按量计费；且境内可能访问不到）
-     默认关闭，改成 true 才会启用 —— 现阶段只用免费模型 */
-  const FALLBACK_TO_REMOTE = false;
+  /* 兜底（也是静态托管下的唯一通道）：境外 Vercel 上的自建接口（智谱，按量计费）
+     站点迁移到 Cloudflare 静态托管后，WorkBuddy 的 cloud.llm 通道随云 SDK 一起下线，
+     问答改走这里；没有云 SDK 时 askCloud 会自动跳过，直接落到这条通道。 */
+  const FALLBACK_TO_REMOTE = true;
   const API = 'https://ai-alchemy-waline.vercel.app/api/ask';
   const SYSTEM = '你是「AI 炼丹房」（一个讲大模型原理、微调、部署与工具选型的中文技术博客）的问答助手。'
     + '回答用简体中文，简洁实用，能给出可动手验证的命令或步骤就给；不确定的事情直说不确定，不要编造具体数字。';

@@ -1,0 +1,13 @@
+[
+  { "id": 1, "name": "本地大模型部署私有化", "slug": "local-deploy", "icon": "炉", "summary": "从消费级显卡到内网服务器，把模型跑在自己手里：Ollama 上手、显存怎么估、服务怎么起、数据怎么不出门。", "sort_order": 1 },
+  { "id": 2, "name": "主流 AI 大模型介绍", "slug": "model-usage", "icon": "器", "summary": "GPT、Claude、DeepSeek、通义、GLM 等主流模型的能力边界与选型对比：哪个模型干什么活最划算，以及上手时的真实体验。", "sort_order": 2 },
+  { "id": 3, "name": "大模型原理入门", "slug": "fundamentals", "icon": "理", "summary": "先搞清楚它到底是什么：猜下一个字、Token、幻觉从哪来。不写代码，但这一层想错了，后面全是弯路。", "sort_order": 3 },
+  { "id": 4, "name": "Prompt 与上下文工程", "slug": "prompt-context", "icon": "方", "summary": "从「念咒」到「配方」：提示词的写法、temperature 与 top_p 怎么拧、上下文窗口怎么用满、注意力当预算来花。", "sort_order": 4 },
+  { "id": 5, "name": "RAG 与知识库实战", "slug": "rag", "icon": "书", "summary": "把闭卷考试改成开卷考试：文档怎么切、检索怎么召回、怎么让它答不准时老实说不知道。", "sort_order": 5 },
+  { "id": 6, "name": "Agent 与工具调用", "slug": "agent", "icon": "手", "summary": "给模型装一双手：函数调用怎么接、循环怎么编排、什么时候该上多智能体，以及什么时候不该用 Agent。", "sort_order": 6 },
+  { "id": 7, "name": "模型微调实战", "slug": "finetune", "icon": "火", "summary": "什么时候该微调、什么时候不该：SFT、LoRA、RLVR 各自解决什么问题，训练数据到底长什么样。", "sort_order": 7 },
+  { "id": 8, "name": "推理加速与工程优化", "slug": "inference", "icon": "速", "summary": "同样的模型为什么别人快十倍：连续批处理、量化、投机解码，以及真正的瓶颈为什么是 KV cache。", "sort_order": 8 },
+  { "id": 9, "name": "炸炉实录", "slug": "failures", "icon": "炸", "summary": "踩过的坑和爬出来的过程。每一炉炸掉的都是真金白银换来的经验，记下来免得再炸一次。", "sort_order": 9 },
+  { "id": 10, "name": "炼丹房杂记", "slug": "notes", "icon": "记", "summary": "建站手记、学习路线图，以及炼丹路上的碎碎念。这里不教技术，只记录这间丹房是怎么搭起来的。", "sort_order": 10 },
+  { "id": 11, "name": "主流agent使用教程", "slug": "agent-usage", "icon": "记", "summary": "可以学习到市面上主流的大模型调用agent软件，帮助你从容应对各种使用过程中的疑难杂症，如有不全可以留言矫正", "sort_order": 11 }
+]

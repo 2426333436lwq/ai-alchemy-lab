@@ -6,12 +6,12 @@
   const homeState = { page: 1, search: '' };
 
   /* 评论后端开关：
-     'builtin' —— 站内自建：读写走站点自己的数据库（国内可达、零成本、无需额外托管），
-                  需登录才能发，管理员可在后台审核/隐藏。当前默认。
-     'waline'  —— Waline：功能更花哨（表情/点赞/邮件通知），但后端托管在境外 Vercel，
-                  大陆网络访问不到时会降级成提示条。
-     两套代码都还留着，改这个常量就能整体切换。 */
-  const COMMENT_BACKEND = 'builtin';
+     'waline'  —— Waline：后端部署在 Vercel，评论存在 Neon PostgreSQL。
+                  **静态托管下的默认选择**（站内评论需要数据库，静态站点用不了）。
+     'builtin' —— 站内自建：读写站点自己的数据库，需登录才能发、管理员可在后台处理。
+                  只有站点重新接上 WorkBuddy 云服务时才能用。
+     两套代码都还留着，改这个常量就能整体切换；两套互斥挂载，不会同时出现两个留言框。 */
+  const COMMENT_BACKEND = 'waline';
 
   function articleCard(a) {
     const cover = a.cover

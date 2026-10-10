@@ -6,25 +6,25 @@
 <title>推理炉具七层：同样的模型，为什么别人快十倍 · AI 炼丹房</title>
 <meta name="description" content="不加卡也能把吞吐拉起来的七层优化。拼车、平装书、实习生起草老板审稿——三个比喻讲清连续批处理、量化和投机解码；以及真正的瓶颈为什么不是算力而是 KV cache。">
 <meta name="keywords" content="炉具评测,推理优化,vLLM,量化,部署">
-<link rel="canonical" href="https://ai-alchemy-lab.app.workbuddy.host/a/6/">
-<link rel="alternate" type="application/rss+xml" title="AI 炼丹房" href="https://ai-alchemy-lab.app.workbuddy.host/feed.xml">
+<link rel="canonical" href="https://ai-alchemy-lab.2426333436.workers.dev/a/6/">
+<link rel="alternate" type="application/rss+xml" title="AI 炼丹房" href="https://ai-alchemy-lab.2426333436.workers.dev/feed.xml">
 <meta property="og:type" content="article">
 <meta property="og:title" content="推理炉具七层：同样的模型，为什么别人快十倍 · AI 炼丹房">
 <meta property="og:description" content="不加卡也能把吞吐拉起来的七层优化。拼车、平装书、实习生起草老板审稿——三个比喻讲清连续批处理、量化和投机解码；以及真正的瓶颈为什么不是算力而是 KV cache。">
-<meta property="og:url" content="https://ai-alchemy-lab.app.workbuddy.host/a/6/">
+<meta property="og:url" content="https://ai-alchemy-lab.2426333436.workers.dev/a/6/">
 <meta property="og:site_name" content="AI 炼丹房">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="推理炉具七层：同样的模型，为什么别人快十倍 · AI 炼丹房">
 <meta name="twitter:description" content="不加卡也能把吞吐拉起来的七层优化。拼车、平装书、实习生起草老板审稿——三个比喻讲清连续批处理、量化和投机解码；以及真正的瓶颈为什么不是算力而是 KV cache。">
 <link rel="stylesheet" href="../../assets/css/style.css">
 <link rel="stylesheet" href="../../assets/vendor/hljs-github.min.css">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"推理炉具七层：同样的模型，为什么别人快十倍 · AI 炼丹房","description":"不加卡也能把吞吐拉起来的七层优化。拼车、平装书、实习生起草老板审稿——三个比喻讲清连续批处理、量化和投机解码；以及真正的瓶颈为什么不是算力而是 KV cache。","datePublished":"2026-09-27T16:18:00+08:00","dateModified":"2026-09-27T16:18:00+08:00","keywords":"炉具评测,推理优化,vLLM,量化,部署","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.app.workbuddy.host/a/6/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"推理炉具七层：同样的模型，为什么别人快十倍 · AI 炼丹房","description":"不加卡也能把吞吐拉起来的七层优化。拼车、平装书、实习生起草老板审稿——三个比喻讲清连续批处理、量化和投机解码；以及真正的瓶颈为什么不是算力而是 KV cache。","datePublished":"2026-09-27T16:18:00+08:00","dateModified":"2026-09-27T16:18:00+08:00","keywords":"炉具评测,推理优化,vLLM,量化,部署","author":{"@type":"Organization","name":"AI 炼丹房"},"publisher":{"@type":"Organization","name":"AI 炼丹房"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://ai-alchemy-lab.2426333436.workers.dev/a/6/"}}</script>
 <style>
 body{padding:0 0 40px}.snap-top{max-width:820px;margin:0 auto;padding:26px 22px 0}.snap-tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;margin-bottom:26px;font-size:13.5px;color:var(--ink-soft)}.snap-wrap{max-width:820px;margin:0 auto;padding:0 22px}.snap-title{font-family:var(--font-display);font-size:27px;line-height:1.4;margin-bottom:12px}.snap-meta{color:var(--ink-faint);font-size:13.5px;margin-bottom:24px;display:flex;gap:14px;flex-wrap:wrap}.snap-cover{max-width:100%;border-radius:10px;margin-bottom:20px}.snap-foot{margin-top:36px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--ink-faint)}.snap-list{margin-top:8px}.snap-list li{padding:5px 0;border-bottom:1px dashed var(--line)}@media (max-width:640px){.snap-title{font-size:22px}}</style>
 </head>
 <body>
-<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/6">进入完整站点</a></div></div>
-<div class="snap-wrap" data-url="https://ai-alchemy-lab.app.workbuddy.host/a/6/"><h1 class="snap-title">推理炉具七层：同样的模型，为什么别人快十倍</h1><div class="snap-meta"><span>2026 年 9 月 27 日</span><span>约 9 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E7%82%89%E5%85%B7%E8%AF%84%E6%B5%8B">炉具评测</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E6%8E%A8%E7%90%86%E4%BC%98%E5%8C%96">推理优化</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/vLLM">vLLM</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E9%87%8F%E5%8C%96">量化</a> <a class="tag-chip" href="https://ai-alchemy-lab.app.workbuddy.host/#/tag/%E9%83%A8%E7%BD%B2">部署</a></span></div><div class="article-body"><p>有个真实的对比：同一个 70B 模型，同一个任务——</p>
+<div class="snap-top"><div class="snap-tip"><span>这是便于搜索引擎收录的静态版，完整站点支持主题切换与更多互动。</span><a class="btn btn-sm" href="https://ai-alchemy-lab.2426333436.workers.dev/#/article/6">进入完整站点</a></div></div>
+<div class="snap-wrap" data-url="https://ai-alchemy-lab.2426333436.workers.dev/a/6/"><h1 class="snap-title">推理炉具七层：同样的模型，为什么别人快十倍</h1><div class="snap-meta"><span>2026 年 9 月 27 日</span><span>约 9 分钟</span><span class="detail-tags"><a class="tag-chip" href="https://ai-alchemy-lab.2426333436.workers.dev/#/tag/%E7%82%89%E5%85%B7%E8%AF%84%E6%B5%8B">炉具评测</a> <a class="tag-chip" href="https://ai-alchemy-lab.2426333436.workers.dev/#/tag/%E6%8E%A8%E7%90%86%E4%BC%98%E5%8C%96">推理优化</a> <a class="tag-chip" href="https://ai-alchemy-lab.2426333436.workers.dev/#/tag/vLLM">vLLM</a> <a class="tag-chip" href="https://ai-alchemy-lab.2426333436.workers.dev/#/tag/%E9%87%8F%E5%8C%96">量化</a> <a class="tag-chip" href="https://ai-alchemy-lab.2426333436.workers.dev/#/tag/%E9%83%A8%E7%BD%B2">部署</a></span></div><div class="article-body"><p>有个真实的对比：同一个 70B 模型，同一个任务——</p>
 <table>
 <thead>
 <tr>
@@ -232,7 +232,7 @@ python benchmark_serving.py --model your-model \
 <p>丹成不必在我，火候自有记录。</p>
 <hr>
 <p><em>附注：文中参数与阈值来自 vLLM / SGLang 公开文档与社区实践总结，收益倍数随模型、硬件与流量分布波动较大，请以你自己的 benchmark 为准。量化务必在你的任务上做质量验证后再上生产。</em></p>
-</div><div class="card" style="margin-top:26px;padding:16px 20px"><div class="post-nav-links"><a class="post-nav-item" href="https://ai-alchemy-lab.app.workbuddy.host/a/5/"><span class="pn-label">上一篇</span>炸炉实录：Agent 上线三个月，我们炸过的六次炉</a><a class="post-nav-item next" href="https://ai-alchemy-lab.app.workbuddy.host/a/7/"><span class="pn-label">下一篇</span>后训练的六道火候：大模型是怎么「刷题」变强的</a></div></div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/29/">显存这道算术题：买卡之前必须算的三笔账</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/30/">量化到底牺牲了什么：把精度换成显存的那笔交易</a></li><li><a href="https://ai-alchemy-lab.app.workbuddy.host/a/32/">引擎选型与并发压测：同一个模型换个框架，吞吐差一个数量级</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.app.workbuddy.host/#/article/6">在完整站点中阅读本文</a></p></div>
-<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.app.workbuddy.host/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.app.workbuddy.host/archive/">全部文章</a></div></div>
+</div><div class="card" style="margin-top:26px;padding:16px 20px"><div class="post-nav-links"><a class="post-nav-item" href="https://ai-alchemy-lab.2426333436.workers.dev/a/5/"><span class="pn-label">上一篇</span>炸炉实录：Agent 上线三个月，我们炸过的六次炉</a><a class="post-nav-item next" href="https://ai-alchemy-lab.2426333436.workers.dev/a/7/"><span class="pn-label">下一篇</span>后训练的六道火候：大模型是怎么「刷题」变强的</a></div></div><div class="card" style="margin-top:32px;padding:18px 20px"><h3 class="box-title" style="margin-top:0">接着炼 · 相关丹方</h3><ul class="snap-list"><li><a href="https://ai-alchemy-lab.2426333436.workers.dev/a/29/">显存这道算术题：买卡之前必须算的三笔账</a></li><li><a href="https://ai-alchemy-lab.2426333436.workers.dev/a/30/">量化到底牺牲了什么：把精度换成显存的那笔交易</a></li><li><a href="https://ai-alchemy-lab.2426333436.workers.dev/a/32/">引擎选型与并发压测：同一个模型换个框架，吞吐差一个数量级</a></li></ul></div><p style="margin-top:28px"><a class="btn" href="https://ai-alchemy-lab.2426333436.workers.dev/#/article/6">在完整站点中阅读本文</a></p></div>
+<div class="snap-top"><div class="snap-foot"><a href="https://ai-alchemy-lab.2426333436.workers.dev/">AI 炼丹房</a> · 数据是药材 · 算力是炉火 · 调参是火候 · <a href="https://ai-alchemy-lab.2426333436.workers.dev/archive/">全部文章</a></div></div>
 </body>
 </html>
