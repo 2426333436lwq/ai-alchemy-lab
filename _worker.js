@@ -496,7 +496,8 @@ async function searchWeb(query) {
     }
   } catch (e) { /* 落维基兜底 */ }
 
-  if (!out.length) {
+  // 维基兜底只用于「像词条名」的短查询，避免长问题被它的全文检索带偏
+  if (!out.length && String(query).trim().length <= 14) {
     try {
       const res = await fetch('https://zh.wikipedia.org/w/api.php?action=query&list=search&format=json&utf8=1&srlimit=4&srsearch=' + encodeURIComponent(query), {
         headers: { 'User-Agent': 'AlchemyLabBot/1.0 (https://ai-alchemy-lab.2426333436.workers.dev)' },
@@ -590,10 +591,11 @@ async function handleAsk(request, env, cors) {
     '\n【回答要求】',
     '1) 简体中文，口语、简洁，尽量 300 字内。',
     '2) 与本站相关的问题（如「一共几篇」「有没有讲 X 的」「X 是什么」「怎么学」）：优先依据上面的文章清单/摘录回答，并点名具体文章标题。',
-    '3) 站外/通用/时效性问题：直接用你的知识回答；若给了联网搜索结果，就优先依据搜索结果，并注明来源域名（如「据 github.com」）。',
-    '4) 不要因为博客里没写就拒绝站外问题；只有确实不知道且也没有可用搜索结果时，才说「这点我不太确定」。',
-    '5) 绝不编造不存在的文章标题、链接或数据。',
-    webFailed ? '6) 本次联网没搜到结果，请如实说明「联网暂时没搜到」，再基于已有知识回答。' : '',
+    '3) 站外/通用问题：直接用你的知识回答，不要因为博客里没写就拒绝。',
+    '4) 若给了联网搜索结果且与问题相关：优先依据它回答，并注明来源域名（如「据 github.com」）；若结果与问题明显无关，不要硬套，就说「这次没搜到靠谱的信息」。',
+    '5) 涉及「最新/今年」等时效信息、又没有联网结果时，要说明你的知识可能不是最新的。',
+    '6) 绝不编造不存在的文章标题、链接或数据。',
+    webFailed ? '7) 本次联网没搜到结果，请如实说明「联网暂时没搜到」，再基于已有知识回答。' : '',
   ].filter(Boolean).join('\n');
 
   const resp = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
