@@ -24,8 +24,8 @@
     if (footerNote && s.footer_note) footerNote.textContent = s.footer_note;
   };
 
-  /* 静态托管下也照样读 data/site.json（原来只在有云 SDK 时才读） */
   App.loadSettings = async function () {
+    if (!window.cloud) { App.applySettings(); return; }
     try {
       App.settings = await Api.getSiteSettings();
     } catch (e) { /* 读取失败用默认值 */ }
@@ -68,6 +68,8 @@
     /* 离开文章页时卸掉目录高亮与进度条的滚动监听（必须在滚动重置之前，
        否则 detach 里算进度时拿到的已经是归零后的 scrollY） */
     if (window.ReadingAssist) ReadingAssist.detach();
+    /* 离开文章页时销毁 Waline 实例，否则下一次进文章会看到上一页的评论 */
+    if (window.Views && Views.unmountWaline) Views.unmountWaline();
 
     /* 换页必须回到顶部：否则新页面会继承上一页的滚动位置，
        表现为「打开新文章却停在半中间」+ 阅读进度被写成上一页的位置 */
@@ -83,9 +85,7 @@
     App.updateFavBadge();
     if (window.Theme) Theme.syncRoute(parts);
 
-    /* 静态托管下 window.cloud 本来就该是 null：只要文章数据用的是本地 JSON，
-       这个检查就不能拦路（原来是「SDK 没加载就整站报错」，迁移后已不需要） */
-    if (window.CLOUD_SDK_MISSING && !window.STATIC_DATA_MODE) {
+    if (window.CLOUD_SDK_MISSING) {
       Util.setError(root, '云服务组件加载失败', '请检查网络连接后刷新页面。');
       return;
     }
@@ -187,7 +187,7 @@
   }
 
   App.refreshNav = async function () {
-    adminFlag = await Api.isAdmin();
+    adminFlag = window.cloud ? await Api.isAdmin() : false;
     ownerFlag = adminFlag ? await Api.isOwner() : false;
     updateAdminEntries(parseHash());
   };

@@ -2,11 +2,10 @@
 (function () {
   'use strict';
 
-  /* 问答唯一通道：同域 Cloudflare Worker 代理智谱 GLM-4-Flash（/api/ask）。
-     站点已迁到 Cloudflare Workers + D1，不再依赖 WorkBuddy 云 SDK 或境外 Vercel，
-     同域请求在国内也能正常到达。 */
-  const FALLBACK_TO_REMOTE = true;
-  const API = '/api/ask';
+  /* 兜底：境外 Vercel 上的自建接口（智谱，按量计费；且境内可能访问不到）
+     默认关闭，改成 true 才会启用 —— 现阶段只用免费模型 */
+  const FALLBACK_TO_REMOTE = false;
+  const API = 'https://ai-alchemy-waline.vercel.app/api/ask';
   const SYSTEM = '你是「AI 炼丹房」（一个讲大模型原理、微调、部署与工具选型的中文技术博客）的问答助手。'
     + '回答用简体中文，简洁实用，能给出可动手验证的命令或步骤就给；不确定的事情直说不确定，不要编造具体数字。';
 
@@ -49,42 +48,15 @@
     throw lastErr || new Error('云服务暂时没有可用模型');
   }
 
-  /* 走同域 /api/ask（Cloudflare Worker → 智谱）；失败抛错，交给上层显示重试按钮 */
-  function askRemote(q, web) {
+  /* 备用通道：境外自建接口 */
+  function askRemote(q) {
     return fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: q, web: !!web })
+      body: JSON.stringify({ question: q })
     })
-      .then(function (r) { return r.json().catch(function () { return {}; }); })
-      .then(function (data) {
-        if (data && typeof data.answer === 'string' && data.answer.trim()) {
-          return { answer: data.answer, sources: Array.isArray(data.sources) ? data.sources : [] };
-        }
-        const msg = (data && data.error && data.error.message) || (typeof data.error === 'string' ? data.error : '');
-        throw new Error(msg || '问答服务没有返回内容');
-      });
-  }
-
-  /* 联网回答的「来源」列表（可点击） */
-  function appendSources(bubble, sources) {
-    const wrap = document.createElement('div');
-    wrap.className = 'ask-sources';
-    const label = document.createElement('span');
-    label.className = 'ask-sources-label';
-    label.textContent = '来源：';
-    wrap.appendChild(label);
-    sources.slice(0, 5).forEach(function (s) {
-      const a = document.createElement('a');
-      a.href = s.url || '#';
-      a.target = '_blank';
-      a.rel = 'noopener';
-      a.textContent = s.title || s.url || '链接';
-      wrap.appendChild(a);
-    });
-    bubble.appendChild(wrap);
-    const box = bubble.parentNode;
-    if (box) box.scrollTop = 99999;
+      .then(function (r) { return r.json(); })
+      .then(function (data) { return data.answer || data.error || '出错了'; });
   }
   const POS_KEY = 'alch.ask.fabPos'; // 拖动后的位置，存本机
   const EDGE = 10;     // 距离视口边缘的最小留白
@@ -143,12 +115,8 @@
     panel.id = 'ask-panel';
     panel.innerHTML =
       '<div class="ask-head">问炼丹房<span class="ask-close">×</span></div>' +
-      '<div class="ask-msgs"><div class="ask-msg bot">你好！我是炼丹房 AI。可以聊本站文章，也能答通用问题；点左下角「联网」还能让我搜实时资料。</div></div>' +
-      '<div class="ask-input">' +
-      '<button type="button" class="ask-web" id="ask-web-btn" title="开启后回答会联网检索实时信息">联网</button>' +
-      '<input type="text" placeholder="输入你的问题..." autocomplete="off">' +
-      '<button type="button" class="ask-send">发送</button>' +
-      '</div>';
+      '<div class="ask-msgs"><div class="ask-msg bot">你好！我是炼丹房 AI，问我任何关于大模型的问题吧。</div></div>' +
+      '<div class="ask-input"><input type="text" placeholder="输入你的问题..." autocomplete="off"><button>发送</button></div>';
     document.body.appendChild(panel);
 
     /* 恢复上次拖动的位置 */
@@ -217,21 +185,7 @@
     });
 
     const input = panel.querySelector('input');
-    const sendBtn = panel.querySelector('.ask-send');
-    const webBtn = panel.querySelector('.ask-web');
-
-    /* 联网开关：状态存本机 */
-    let webOn = false;
-    try { webOn = localStorage.getItem('alch.ask.web') === '1'; } catch (e) { /* 忽略 */ }
-    function applyWeb() {
-      if (!webBtn) return;
-      webBtn.classList.toggle('on', webOn);
-      webBtn.textContent = webOn ? '联网·开' : '联网';
-      try { localStorage.setItem('alch.ask.web', webOn ? '1' : '0'); } catch (e) { /* 忽略 */ }
-    }
-    applyWeb();
-    if (webBtn) webBtn.addEventListener('click', function () { webOn = !webOn; applyWeb(); });
-
+    const sendBtn = panel.querySelector('.ask-input button');
     let lastQuestion = null;
 
     async function run(q) {
@@ -253,9 +207,7 @@
       } catch (err) {
         if (FALLBACK_TO_REMOTE) {
           try {
-            const r = await askRemote(q, webOn);
-            finish(r.answer);
-            if (r.sources && r.sources.length) appendSources(bubble, r.sources);
+            finish(await askRemote(q));
             return;
           } catch (e2) { /* 落到下面的提示 */ }
         }

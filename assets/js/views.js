@@ -5,7 +5,13 @@
   const Views = {};
   const homeState = { page: 1, search: '' };
 
-  /* 评论：自建，数据存 Cloudflare D1，走同域 /api/comments（匿名可发，无需登录） */
+  /* 评论后端开关：
+     'builtin' —— 站内自建：读写走站点自己的数据库（国内可达、零成本、无需额外托管），
+                  需登录才能发，管理员可在后台审核/隐藏。当前默认。
+     'waline'  —— Waline：功能更花哨（表情/点赞/邮件通知），但后端托管在境外 Vercel，
+                  大陆网络访问不到时会降级成提示条。
+     两套代码都还留着，改这个常量就能整体切换。 */
+  const COMMENT_BACKEND = 'waline';
 
   function articleCard(a) {
     const cover = a.cover
@@ -136,6 +142,7 @@
       '<div id="related-box"></div>' +
       '<div id="hot-box"></div>' +
       '<div id="comment-box" class="card comment-box"></div>' +
+      '<div id="waline" class="waline-box"></div>' +
       '<div class="detail-actions"><a class="btn" href="#/">返回丹房</a></div>' +
       '</article>';
 
@@ -252,8 +259,16 @@
 
     renderShare(root, article);
 
-    /* 评论区：自建 D1 评论（同域 /api/comments，匿名可发） */
-    renderComments(root, article);
+    /* 评论区：两套后端互斥，只挂一个，避免页面上出现两个留言框 */
+    if (COMMENT_BACKEND === 'builtin') {
+      const wbox = Util.$('#waline', root);
+      if (wbox) wbox.remove();
+      renderComments(root, article);
+    } else {
+      const legacy = Util.$('#comment-box', root);
+      if (legacy) legacy.remove();
+      mountWaline(root, article);
+    }
 
     try {
       const related = await Api.relatedArticles(article, 3);
@@ -285,6 +300,106 @@
     } catch (e) { /* 热门榜失败不影响阅读 */ }
 
 
+  };
+
+  /* ---------------- Waline 评论（后端托管在境外，当前未启用） ---------------- */
+
+  /* 后端：Vercel 托管（境外）。国内若访问不到，评论区会走降级提示，不影响正文阅读 */
+  const WALINE_SERVER = 'https://ai-alchemy-waline.vercel.app';
+  /* 客户端脚本本地自托管，不再走 unpkg（境外 CDN 国内不稳定） */
+  const WALINE_JS = 'assets/vendor/waline.umd.js';
+  let walineInstance = null;
+  let walineLoader = null;
+
+  /* 脚本按需加载，失败也只影响评论区，不拖慢首屏 */
+  function loadWaline() {
+    if (window.Waline) return Promise.resolve(window.Waline);
+    if (walineLoader) return walineLoader;
+    walineLoader = new Promise(function (resolve, reject) {
+      const s = document.createElement('script');
+      s.src = WALINE_JS;
+      s.async = true;
+      s.onload = function () {
+        window.Waline ? resolve(window.Waline) : reject(new Error('Waline 未挂载到 window'));
+      };
+      s.onerror = function () { reject(new Error('Waline 脚本加载失败')); };
+      document.head.appendChild(s);
+    });
+    return walineLoader;
+  }
+
+  /* 评论服务部署在境外，先探一下连通性：连不上就直接给降级提示，
+     不要让用户对着一个永远加载中的空框发呆（正文阅读完全不受影响） */
+  function walineReachable() {
+    return new Promise(function (resolve) {
+      let done = false;
+      const finish = function (ok) {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        resolve(ok);
+      };
+      const timer = setTimeout(function () { finish(false); }, 6000);
+      fetch(WALINE_SERVER + '/api/comment?type=count&path=/ping', {
+        method: 'GET',
+        cache: 'no-store',
+      }).then(function (r) { finish(r.ok); }).catch(function () { finish(false); });
+    });
+  }
+
+  function showWalineFallback(box, article) {
+    box.innerHTML =
+      '<div class="card waline-fallback">' +
+      '<p>评论服务暂时连不上（部署在境外，部分地区网络可能访问不到）。</p>' +
+      '<p class="muted">文章正文不受影响，可以正常阅读；换个网络环境再打开就能看到评论。</p>' +
+      '<button class="btn btn-sm" id="waline-retry" type="button">重试</button>' +
+      '</div>';
+    const btn = Util.$('#waline-retry', box);
+    if (btn) {
+      btn.addEventListener('click', function () {
+        box.innerHTML = '<div class="card waline-fallback">正在重连…</div>';
+        mountWaline(box, article);
+      });
+    }
+  }
+
+  function mountWaline(root, article) {
+    const box = Util.$('#waline', root) || (root && root.id === 'waline' ? root : null);
+    if (!box) return;
+    box.innerHTML = '<div class="card waline-fallback">正在连接评论服务…</div>';
+    walineReachable().then(function (ok) {
+      if (!ok) { showWalineFallback(box, article); return; }
+      loadWaline().then(function (Waline) {
+        /* SPA 换文章：必须先销毁旧实例，否则评论区串台 */
+        if (walineInstance) {
+          walineInstance.destroy();
+          walineInstance = null;
+        }
+        box.innerHTML = '';
+        /* v3 的 UMD 导出是命名空间对象，入口是 init()（不是 new Waline）；
+           3.16.0 认的是 serverURL 这个键，写 server 会直接抛 "Option 'serverURL' is missing!" */
+        walineInstance = Waline.init({
+          el: '#waline',
+          serverURL: WALINE_SERVER,
+          /* 每篇独立 path：SPA 是 hash 路由，不显式传会全都落在 / 上 */
+          path: '/a/' + article.id + '/',
+          locale: { placeholder: '留下你的炼丹心得...' },
+          dark: 'auto',
+          reaction: false,
+          commentCount: true,
+          pageSize: 10
+        });
+      }).catch(function () {
+        showWalineFallback(box, article);
+      });
+    });
+  }
+
+  /* 离开文章页时销毁，避免实例残留 */
+  Views.unmountWaline = function () {
+    if (!walineInstance) return;
+    walineInstance.destroy();
+    walineInstance = null;
   };
 
   /* ---------------- 阅读辅助：目录 + 阅读进度条 ---------------- */
@@ -460,8 +575,8 @@
     return Util.formatDate(iso);
   }
 
-  function commentItem(c) {
-    const name = Util.escapeHtml(c.nick || '道友');
+  function commentItem(c, canDelete) {
+    const name = Util.escapeHtml(c.nickname || (c.user_email ? c.user_email.split('@')[0] : '道友'));
     const initial = name.slice(0, 1).toUpperCase();
     return '<li class="comment-item" data-id="' + c.id + '">' +
       '<div class="comment-avatar">' + initial + '</div>' +
@@ -469,13 +584,24 @@
       '<div class="comment-head"><span class="comment-name">' + name + '</span>' +
       '<span class="comment-time">' + timeAgo(c.created_at) + '</span></div>' +
       '<div class="comment-text">' + Util.escapeHtml(c.content).replace(/\n/g, '<br>') + '</div>' +
+      '<div class="comment-ops">' +
+      '<button class="comment-op" data-act="reply">回复</button>' +
+      (c.status && c.status !== 'published' ? '<span class="comment-flag">已隐藏</span>' : '') +
+      (canDelete ? '<button class="comment-op danger" data-act="del">删除</button>' : '') +
+      '</div>' +
       '</div></li>';
   }
 
-  /* 自建评论：数据存 D1，走同域 /api/comments。匿名可发（昵称必填、邮箱选填）。 */
   async function renderComments(root, article) {
     const box = Util.$('#comment-box', root);
     if (!box) return;
+
+    let session = null;
+    let isAdmin = false;
+    try {
+      session = await Util.getSession();
+      if (session) isAdmin = await Api.isAdmin();
+    } catch (e) { /* 未登录也能看评论 */ }
 
     let comments = [];
     try {
@@ -485,66 +611,80 @@
       return;
     }
 
-    let savedNick = '';
-    try { savedNick = localStorage.getItem('alch.comment.nick') || ''; } catch (e) { /* 静默 */ }
+    /* 两级结构：顶层评论 + 其下的回复 */
+    const tops = comments.filter(function (c) { return !c.parent_id; });
+    const kids = comments.filter(function (c) { return c.parent_id; });
+    const myId = session && session.user ? session.user.id : '';
 
     function listHtml() {
       if (!comments.length) {
         return '<p class="comment-empty">还没有人留言。第一炉丹方的第一句反馈，往往最有价值。</p>';
       }
-      return '<ul class="comment-list">' + comments.map(commentItem).join('') + '</ul>';
+      return '<ul class="comment-list">' + tops.map(function (c) {
+        const mine = c.user_id === myId;
+        const sub = kids.filter(function (k) { return k.parent_id === c.id; });
+        return commentItem(c, mine || isAdmin) +
+          (sub.length
+            ? '<ul class="comment-list sub">' + sub.map(function (k) {
+                return commentItem(k, k.user_id === myId || isAdmin);
+              }).join('') + '</ul>'
+            : '');
+      }).join('') + '</ul>';
     }
 
     function paint() {
       box.innerHTML =
         '<h3 class="box-title">丹友留言 · <span id="comment-count">' + comments.length + '</span> 条</h3>' +
-        '<div id="comment-form" class="comment-form">' +
-        '<div class="comment-form-row">' +
-        '<input id="comment-nick" class="input" type="text" maxlength="40" placeholder="你的昵称（必填）" value="' + Util.escapeHtml(savedNick) + '">' +
-        '<input id="comment-email" class="input" type="email" maxlength="80" placeholder="邮箱（选填，不公开）">' +
-        '</div>' +
-        '<textarea id="comment-input" class="textarea comment-input" rows="3" maxlength="1000" ' +
-        'placeholder="说说你的看法、踩过的坑，或者想让我下一篇写什么…"></textarea>' +
-        '<input id="comment-website" class="comment-honeypot" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">' +
-        '<div class="comment-form-foot">' +
-        '<span class="form-hint" id="comment-count-hint">还可以输入 1000 字</span>' +
-        '<button class="btn btn-gold btn-sm" id="comment-submit">发表留言</button>' +
-        '</div></div>' +
+        '<div id="comment-form"></div>' +
         '<div id="comment-list-area">' + listHtml() + '</div>';
       bindForm();
     }
 
     function bindForm() {
-      const nickEl = Util.$('#comment-nick', box);
-      const emailEl = Util.$('#comment-email', box);
-      const input = Util.$('#comment-input', box);
-      const honey = Util.$('#comment-website', box);
-      const hint = Util.$('#comment-count-hint', box);
-      const btn = Util.$('#comment-submit', box);
+      const form = Util.$('#comment-form', box);
+      if (!form) return;
+      if (!session) {
+        form.innerHTML =
+          '<div class="comment-login">' +
+          '<span>登录后即可留言，邮箱注册只要十几秒。</span>' +
+          '<a class="btn btn-gold btn-sm" href="#/login" id="comment-login-btn">去登录</a>' +
+          '</div>';
+        Util.$('#comment-login-btn', form).addEventListener('click', function () {
+          sessionStorage.setItem('redirectAfterLogin', '#/article/' + article.id);
+        });
+        return;
+      }
+      form.innerHTML =
+        '<textarea id="comment-input" class="textarea comment-input" rows="3" maxlength="1000" ' +
+        'placeholder="说说你的看法、踩过的坑，或者想让我下一篇写什么…"></textarea>' +
+        '<div class="comment-form-foot">' +
+        '<span class="form-hint" id="comment-count-hint">还可以输入 1000 字</span>' +
+        '<span class="comment-form-btns">' +
+        '<button class="btn btn-sm" id="comment-cancel" style="display:none">取消回复</button>' +
+        '<button class="btn btn-gold btn-sm" id="comment-submit">发表留言</button>' +
+        '</span></div>';
+
+      const input = Util.$('#comment-input', form);
+      const hint = Util.$('#comment-count-hint', form);
+      const cancel = Util.$('#comment-cancel', form);
+      let replyTo = null;
 
       input.addEventListener('input', function () {
         hint.textContent = '还可以输入 ' + (1000 - input.value.length) + ' 字';
       });
 
-      btn.addEventListener('click', async function () {
-        const nick = nickEl.value.trim();
-        const content = input.value.trim();
-        if (!nick) { Util.toast('请填写昵称', 'error'); nickEl.focus(); return; }
-        if (content.length < 2) { Util.toast('至少写 2 个字', 'error'); input.focus(); return; }
+      Util.$('#comment-submit', form).addEventListener('click', async function () {
+        const btn = this;
+        const text = input.value.trim();
+        if (text.length < 2) { Util.toast('至少写 2 个字', 'error'); return; }
         btn.disabled = true;
         btn.textContent = '发送中…';
         try {
-          const row = await Api.addComment({
-            article_id: article.id,
-            nick: nick,
-            email: emailEl.value.trim(),
-            content: content,
-            website: honey.value,
-          });
-          try { localStorage.setItem('alch.comment.nick', nick); } catch (e) { /* 静默 */ }
-          if (row) {
-            comments.push({ id: row.id, nick: row.nick, content: row.content, created_at: row.created_at });
-          }
+          const row = await Api.addComment(article.id, text, replyTo, session.user);
+          comments.push(row);
+          input.value = '';
+          replyTo = null;
+          cancel.style.display = 'none';
           paint();
           Util.toast('留言已发表', 'success');
         } catch (err) {
@@ -552,6 +692,43 @@
         } finally {
           if (btn.isConnected) { btn.disabled = false; btn.textContent = '发表留言'; }
         }
+      });
+
+      Util.$$('[data-act="reply"]', box).forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const li = btn.closest('.comment-item');
+          const id = Number(li.getAttribute('data-id'));
+          const c = comments.find(function (x) { return x.id === id; });
+          if (!c) return;
+          replyTo = id;
+          const nm = c.nickname || (c.user_email ? c.user_email.split('@')[0] : '道友');
+          input.value = '@' + nm + ' ';
+          input.focus();
+          cancel.style.display = '';
+          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+      });
+
+      cancel.addEventListener('click', function () {
+        replyTo = null;
+        input.value = '';
+        cancel.style.display = 'none';
+      });
+
+      Util.$$('[data-act="del"]', box).forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          const li = btn.closest('.comment-item');
+          const id = Number(li.getAttribute('data-id'));
+          if (!window.confirm('确定删除这条留言？')) return;
+          try {
+            await Api.deleteComment(id);
+            comments = comments.filter(function (x) { return x.id !== id && x.parent_id !== id; });
+            paint();
+            Util.toast('已删除', 'success');
+          } catch (err) {
+            Util.toast(err.message || '删除失败', 'error');
+          }
+        });
       });
     }
 

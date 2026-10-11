@@ -41,18 +41,8 @@
   /* ---------------- 登录页 ---------------- */
 
   Auth.viewLogin = async function (root) {
-    /* 静态托管：没有云 SDK 就没有账号体系，直接给说明，不再渲染登录表单 */
-    if (!window.cloud) {
-      root.innerHTML = Util.staticHostNotice('登录功能已关闭');
-      return;
-    }
-
     const session = await Util.getSession();
     if (session) { gotoAfterLogin(); return; }
-
-    /* 有没有邮件服务决定要不要邮箱验证码环节 */
-    const cfg = await cloud.auth.getConfig().catch(function () { return { otpEnabled: false }; });
-    const otpEnabled = !!(cfg && cfg.otpEnabled);
 
     root.innerHTML =
       '<div class="login-wrap"><div class="card login-card">' +
@@ -60,16 +50,18 @@
       '<p class="login-sub">邮箱登录 · 写作与下载附件需要身份认证</p>' +
       '<div class="tabs">' +
       '<button data-tab="password" class="active">密码登录</button>' +
-      (otpEnabled ? '<button data-tab="otp">验证码登录</button>' : '') +
+      '<button data-tab="otp">验证码登录</button>' +
       '</div>' +
       '<div id="login-msg" class="hidden"></div>' +
       '<div id="tab-password"></div>' +
-      (otpEnabled ? '<div id="tab-otp" class="hidden"></div>' : '') +
+      '<div id="tab-otp" class="hidden"></div>' +
       '</div></div>';
 
     const msgEl = Util.$('#login-msg', root);
-    const panes = { password: Util.$('#tab-password', root) };
-    if (otpEnabled) panes.otp = Util.$('#tab-otp', root);
+    const panes = {
+      password: Util.$('#tab-password', root),
+      otp: Util.$('#tab-otp', root),
+    };
 
     Util.$$('.tabs button', root).forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -82,8 +74,8 @@
       });
     });
 
-    buildPasswordPane(panes.password, msgEl, otpEnabled);
-    if (otpEnabled) buildOtpPane(panes.otp, msgEl);
+    buildPasswordPane(panes.password, msgEl);
+    buildOtpPane(panes.otp, msgEl);
   };
 
   /* ---------- 记住密码：本机保存（可逆混淆，非加密） ---------- */
@@ -109,7 +101,7 @@
   }
 
   /* ---------- 密码登录 + 注册 + 忘记密码（同一面板内切换） ---------- */
-  function buildPasswordPane(pane, msgEl, otpEnabled) {
+  function buildPasswordPane(pane, msgEl) {
     pane.innerHTML =
       /* 登录 */
       '<form id="pwd-form">' +
@@ -133,12 +125,10 @@
       '<input class="input" type="password" id="su-password" required minlength="6" autocomplete="new-password" placeholder="至少 6 位"></div>' +
       '<div class="form-field"><label class="form-label">确认密码</label>' +
       '<input class="input" type="password" id="su-password2" required minlength="6" autocomplete="new-password" placeholder="再输入一次"></div>' +
-      (otpEnabled
-        ? '<div class="form-field"><label class="form-label">邮箱验证码</label>' +
-          '<div class="otp-row"><input class="input" type="text" id="su-code" required placeholder="6 位验证码" maxlength="8">' +
-          '<button class="btn" type="button" id="su-send">获取验证码</button></div>' +
-          '<div class="form-hint">先填邮箱点「获取验证码」，收到后再提交</div></div>'
-        : '') +
+      '<div class="form-field"><label class="form-label">邮箱验证码</label>' +
+      '<div class="otp-row"><input class="input" type="text" id="su-code" required placeholder="6 位验证码" maxlength="8">' +
+      '<button class="btn" type="button" id="su-send">获取验证码</button></div>' +
+      '<div class="form-hint">先填邮箱点「获取验证码」，收到后再提交</div></div>' +
       '<div class="form-actions"><button class="btn btn-primary" type="submit">注册并登录</button></div>' +
       '<div class="form-switch">已有账号？<a id="su-back-link">返回密码登录</a></div>' +
       '</form>' +
@@ -219,8 +209,7 @@
     });
 
     /* ---- 注册 ---- */
-    const suSend = Util.$('#su-send', pane);
-    if (suSend) suSend.addEventListener('click', async function () {
+    Util.$('#su-send', pane).addEventListener('click', async function () {
       const email = Util.$('#su-email', pane).value.trim();
       if (!email) { showMsg(msgEl, '请先输入邮箱'); return; }
       const btn = this;
@@ -247,26 +236,24 @@
       const email = Util.$('#su-email', pane).value.trim();
       const password = Util.$('#su-password', pane).value;
       const password2 = Util.$('#su-password2', pane).value;
+      const code = Util.$('#su-code', pane).value.trim();
       if (password !== password2) { showMsg(msgEl, '两次输入的密码不一致'); return; }
+      if (!pendingOtp || pendingOtp.email !== email) {
+        showMsg(msgEl, '请先为当前邮箱获取验证码');
+        return;
+      }
       const btn = Util.$('button[type="submit"]', signupForm);
       btn.disabled = true;
       hideMsg(msgEl);
       try {
-        if (otpEnabled) {
-          const code = Util.$('#su-code', pane).value.trim();
-          if (!pendingOtp || pendingOtp.email !== email) { showMsg(msgEl, '请先为当前邮箱获取验证码'); return; }
-          const completed = await cloud.auth.verifyOtp({
-            email: pendingOtp.email,
-            verificationId: pendingOtp.verificationId,
-            isExistingUser: pendingOtp.isExistingUser,
-            token: code,
-            password: pendingOtp.isExistingUser ? undefined : password,
-          });
-          if (completed.error) { showMsg(msgEl, completed.error.message || '注册失败，请检查验证码'); return; }
-        } else {
-          const r = await cloud.auth.signUp({ email: email, password: password });
-          if (r.error) { showMsg(msgEl, r.error.message || '注册失败'); return; }
-        }
+        const completed = await cloud.auth.verifyOtp({
+          email: pendingOtp.email,
+          verificationId: pendingOtp.verificationId,
+          isExistingUser: pendingOtp.isExistingUser,
+          token: code,
+          password: pendingOtp.isExistingUser ? undefined : password,
+        });
+        if (completed.error) { showMsg(msgEl, completed.error.message || '注册失败，请检查验证码'); return; }
         pendingOtp = null;
         Util.toast('注册成功，欢迎来到丹房', 'success');
         gotoAfterLogin();
@@ -280,7 +267,6 @@
     /* ---- 忘记密码 ---- */
     let forgotFlow = null; // resetPasswordForEmail 返回的 challenge
     Util.$('#fg-send', pane).addEventListener('click', async function () {
-      if (!otpEnabled) { showMsg(msgEl, '暂未配置邮件服务，自助找回密码不可用；请联系站长重置。'); return; }
       const email = Util.$('#fg-email', pane).value.trim();
       if (!email) { showMsg(msgEl, '请先输入邮箱'); return; }
       const btn = this;
@@ -300,7 +286,6 @@
 
     forgotForm.addEventListener('submit', async function (ev) {
       ev.preventDefault();
-      if (!otpEnabled) { showMsg(msgEl, '暂未配置邮件服务，自助找回密码不可用；请联系站长重置。'); return; }
       if (!forgotFlow) { showMsg(msgEl, '请先获取验证码'); return; }
       const code = Util.$('#fg-code', pane).value.trim();
       const password = Util.$('#fg-password', pane).value;

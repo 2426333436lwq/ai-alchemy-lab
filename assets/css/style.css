@@ -1715,9 +1715,6 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
 .comment-input { font-size: 14.5px; line-height: 1.7; }
 .comment-form-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
 .comment-form-btns { display: flex; gap: 8px; }
-.comment-form-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
-.comment-form-row .input { flex: 1 1 200px; }
-.comment-honeypot { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 .comment-list { list-style: none; margin: 18px 0 0; padding: 0; }
 .comment-list.sub { margin: 8px 0 0 42px; padding-left: 12px; border-left: 2px solid var(--line); }
 .comment-item { display: flex; gap: 12px; padding: 12px 0; border-top: 1px dashed var(--line); }
@@ -2082,7 +2079,7 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
 }
 .ask-input input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--focus-ring); }
 .ask-input input::placeholder { color: var(--ink-faint); }
-.ask-input .ask-send {
+.ask-input button {
   padding: 8px 14px;
   border: none;
   border-radius: 6px;
@@ -2093,28 +2090,7 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
   font-family: var(--font-body);
   transition: background 0.16s ease;
 }
-.ask-input .ask-send:hover { background: var(--cinnabar-deep); }
-.ask-input .ask-web {
-  padding: 8px 10px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  background: var(--paper);
-  color: var(--ink-faint);
-  cursor: pointer;
-  font-size: 12.5px;
-  font-family: var(--font-body);
-  white-space: nowrap;
-  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
-}
-.ask-input .ask-web.on {
-  background: var(--cinnabar);
-  border-color: var(--cinnabar);
-  color: var(--btn-primary-text);
-}
-.ask-sources { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 12px; }
-.ask-sources-label { color: var(--ink-faint); }
-.ask-sources a { color: var(--cinnabar); text-decoration: none; }
-.ask-sources a:hover { text-decoration: underline; }
+.ask-input button:hover { background: var(--cinnabar-deep); }
 
 @media (max-width: 600px) {
   #ask-panel { right: 12px; bottom: 80px; width: calc(100vw - 24px); }
