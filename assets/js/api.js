@@ -16,18 +16,35 @@
     try { return new URL(rel, document.baseURI).href; } catch (e) { return rel; }
   }
 
+  /* 带超时的请求：网络被限速/阻断时，4.5 秒内没响应就当失败，立即走本地兜底，避免页面一直转圈 */
+  function timedFetch(url, opts, ms) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(function () { ctrl.abort(); }, ms || 4500);
+    return fetch(url, Object.assign({}, opts, { signal: ctrl.signal })).then(
+      function (r) { clearTimeout(timer); return r; },
+      function (e) { clearTimeout(timer); throw e; }
+    );
+  }
+
+  /* 一旦同域接口连不上（网络被墙/限速），本次会话内不再逐个等超时，直接用本地兜底 */
+  let apiDown = false;
+
   /* 统一请求：成功返回 data 字段，失败抛错（带服务端消息，供 toast 展示） */
   async function req(path, opts) {
+    if (apiDown) throw new Error('网络不可用');
     opts = opts || {};
     const headers = { 'Content-Type': 'application/json' };
     const tk = token();
     if (tk) headers['Authorization'] = 'Bearer ' + tk;
-    const res = await fetch(API_BASE + path, {
-      method: opts.method || 'GET',
-      headers: headers,
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
-      cache: 'no-store',
-    });
+    let res;
+    try {
+      res = await timedFetch(API_BASE + path, {
+        method: opts.method || 'GET',
+        headers: headers,
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+        cache: 'no-store',
+      });
+    } catch (e) { apiDown = true; throw e; }
     let payload = {};
     try { payload = await res.json(); } catch (e) { /* 忽略非 JSON */ }
     if (!res.ok) {
@@ -42,7 +59,7 @@
   const jsonCache = {};
   async function loadJson(key) {
     if (jsonCache[key]) return jsonCache[key];
-    const res = await fetch(urlOf(SOURCES[key]), { cache: 'no-cache' });
+    const res = await timedFetch(urlOf(SOURCES[key]), { cache: 'no-cache' });
     if (!res.ok) throw new Error('加载 ' + SOURCES[key] + ' 失败（HTTP ' + res.status + '）');
     jsonCache[key] = await res.json();
     return jsonCache[key];
@@ -83,7 +100,11 @@
   /* ---------- 全量文章（接口优先，静态兜底） ---------- */
 
   async function apiList(query) {
-    const res = await fetch(API_BASE + '/articles' + (query ? '?' + query : ''), { cache: 'no-store' });
+    if (apiDown) throw new Error('网络不可用');
+    let res;
+    try {
+      res = await timedFetch(API_BASE + '/articles' + (query ? '?' + query : ''), { cache: 'no-store' });
+    } catch (e) { apiDown = true; throw e; }
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const json = await res.json();
     return { rows: (json.data || []).map(norm), total: Number(json.total) || 0 };
@@ -140,7 +161,7 @@
 
   Api.getArticle = async function (id) {
     try {
-      const res = await fetch(API_BASE + '/articles/' + encodeURIComponent(id), { cache: 'no-store' });
+      const res = await timedFetch(API_BASE + '/articles/' + encodeURIComponent(id), { cache: 'no-store' });
       if (res.ok) {
         const json = await res.json();
         return json && json.data ? norm(json.data) : null;
@@ -241,7 +262,7 @@
 
   Api.listComments = async function (articleId) {
     try {
-      const res = await fetch(API_BASE + '/comments?article_id=' + encodeURIComponent(articleId), { cache: 'no-store' });
+      const res = await timedFetch(API_BASE + '/comments?article_id=' + encodeURIComponent(articleId), { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const json = await res.json();
       return (json.data || []).map(function (c) {
@@ -251,7 +272,7 @@
   };
 
   Api.addComment = async function (payload) {
-    const res = await fetch(API_BASE + '/comments', {
+    const res = await timedFetch(API_BASE + '/comments', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload || {}),
     });
     const json = await res.json().catch(function () { return {}; });
@@ -302,7 +323,7 @@
 
   Api.listAttachments = async function (articleId) {
     try {
-      const res = await fetch(API_BASE + '/attachments?article_id=' + encodeURIComponent(articleId), { cache: 'no-store' });
+      const res = await timedFetch(API_BASE + '/attachments?article_id=' + encodeURIComponent(articleId), { cache: 'no-store' });
       const json = await res.json();
       return json.data || [];
     } catch (e) { return []; }

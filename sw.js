@@ -6,7 +6,7 @@
  *        以及把下面的 VERSION bump 一位（旧缓存在 activate 时整体删除）
  *   - 云数据接口与跨域请求：不拦截
  */
-const VERSION = 'v9';
+const VERSION = 'v10';
 const SHELL_CACHE = 'alchemy-shell-' + VERSION;
 const ASSET_CACHE = 'alchemy-assets-' + VERSION;
 
@@ -33,7 +33,7 @@ self.addEventListener('activate', function (event) {
 });
 
 function isAsset(url) {
-  return /\.(css|js|png|jpg|jpeg|svg|woff2?|webmanifest)$/i.test(url.pathname);
+  return /\.(css|js|png|jpg|jpeg|svg|woff2?|webmanifest|json)$/i.test(url.pathname);
 }
 
 self.addEventListener('fetch', function (event) {
