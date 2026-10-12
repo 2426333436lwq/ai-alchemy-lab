@@ -5,6 +5,9 @@
 .workbuddy/*.png
 .wbapp_*.genie
 
+# 部署产物（由 make-dist.ps1 生成，可从 git 重新构建）
+dist/
+
 # 编辑器与系统
 .DS_Store
 Thumbs.db

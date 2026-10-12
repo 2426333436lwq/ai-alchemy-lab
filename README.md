@@ -88,6 +88,33 @@ node .workbuddy/scripts/gen-static.mjs .workbuddy/data/articles.json "."
 git add -A && git commit -m "说明改了什么" && git push
 ```
 
+## 部署：必须从 dist/ 发布，不要直接发布项目目录
+
+**部署是把「工作目录」整体上传，不是上传 git 的跟踪内容**，所以 `.gitignore` 管不住线上。
+2026-10-12 实测发现线上可直接读到这些**本应私有**的文件（还开了目录列表）：
+
+| 线上 URL | 泄露内容 |
+|---|---|
+| `/.workbuddy/` | 目录列表 |
+| `/.workbuddy/memory/MEMORY.md` | 管理员邮箱、GitHub 仓库、SSH 配置 |
+| `/.workbuddy/applications.yaml` | 应用 locator |
+| `/.workbuddy/data/articles.json` | 310KB 全量正文 |
+
+正确做法是先构建一个只含「该公开文件」的目录，再把它作为站点目录部署：
+
+```powershell
+# 只把 git 跟踪的、且不在排除清单里的文件复制到 dist/，并自检
+.\\.workbuddy\scripts\make-dist.ps1
+
+# 然后把站点目录指向 dist/ 去发布
+```
+
+`make-dist.ps1` 会跳过 `.workbuddy/`、`deploy/`、`articles/` 等，并在结束时断言
+「输出里没有敏感目录 + 关键入口文件齐全」，不通过就直接失败，避免又发一版带泄露的站点。
+
+> 脚本是 UTF-8 **with BOM**（Windows PowerShell 5.1 读无 BOM 的中文会乱码报错）。
+> 用编辑器改完请确认 BOM 还在。
+
 **五条硬约定**，违反会让站点出问题：
 
 1. 新增样式**只能用 CSS 变量**，硬编码颜色会让其他主题破皮。
