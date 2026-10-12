@@ -13,6 +13,56 @@
     return !!(window.cloud && cloud.llm && cloud.llm.chat && cloud.llm.chat.completions);
   }
 
+  /* ---------------- 调用节流 ----------------
+     现状：问答走站点自带的云服务额度（免费档目前不扣钱），但**匿名访客可无限调用**。
+     一旦将来换回付费档（deepseek-v4-flash x0.17 之类），这里就是可直接被刷的账单项。
+
+     ⚠️ 注意这是**客户端限流，只能防手滑和死循环，防不住有意刷量**——
+     真正的额度控制在服务端（RLS / RPC / 网关限速）。这里的作用是：
+     ① 用户狂点发送时不至于把额度全烧在一个问题上；② 给换付费档留出缓冲。
+     服务端限流就位前，不要把它当作安全边界。 */
+  const RATE = {
+    minGapMs: 1500,     // 两次提问最小间隔
+    windowMs: 60 * 1000,
+    maxPerWindow: 8,    // 每分钟上限
+    maxPerDay: 100,     // 每天上限（localStorage 计数）
+  };
+  const RATE_KEY = 'alch.ask.rate';
+
+  function readRate() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(RATE_KEY) || 'null');
+      const today = new Date().toISOString().slice(0, 10);
+      if (!raw || raw.day !== today) return { day: today, dayCount: 0, hits: [], last: 0 };
+      return { day: today, dayCount: raw.dayCount || 0, hits: Array.isArray(raw.hits) ? raw.hits : [], last: raw.last || 0 };
+    } catch (e) {
+      return { day: new Date().toISOString().slice(0, 10), dayCount: 0, hits: [], last: 0 };
+    }
+  }
+  function writeRate(s) {
+    try { localStorage.setItem(RATE_KEY, JSON.stringify(s)); } catch (e) { /* 隐私模式静默 */ }
+  }
+
+  /* 返回 null 表示放行，否则返回给用户看的原因 */
+  function throttleReason() {
+    const now = Date.now();
+    const s = readRate();
+    if (now - s.last < RATE.minGapMs) return '刚问过一句，稍等一下再发。';
+    const hits = s.hits.filter(function (t) { return now - t < RATE.windowMs; });
+    if (hits.length >= RATE.maxPerWindow) return '问得有点快，休息一分钟再问吧。';
+    if (s.dayCount >= RATE.maxPerDay) return '今天的提问次数用完了，明天再来；急的话可以直接翻文章找答案。';
+    return null;
+  }
+  function recordHit() {
+    const now = Date.now();
+    const s = readRate();
+    s.hits = s.hits.filter(function (t) { return now - t < RATE.windowMs; });
+    s.hits.push(now);
+    s.last = now;
+    s.dayCount += 1;
+    writeRate(s);
+  }
+
   /* 只走免费档（官方 credits 倍率：hy3 = x0.00；hunyuan-chat 未标价；hunyuan-2.0-thinking = x0.04）
      用户量上来之后再考虑 deepseek-v4-flash(x0.17) / deepseek-v4-pro(x0.51) 这类付费档 */
   const MODELS = ['hy3', 'hunyuan-chat', 'hunyuan-2.0-thinking'];
@@ -190,6 +240,13 @@
 
     async function run(q) {
       lastQuestion = q;
+      /* 重试按钮是用户主动点的，仍然计入节流：否则连点重试就能绕过上限 */
+      const blocked = throttleReason();
+      if (blocked) {
+        addMsg(blocked, 'bot');
+        return;
+      }
+      recordHit();
       const bubble = addMsg('思考中…', 'bot', true);
       const finish = function (text) {
         bubble.classList.remove('loading');

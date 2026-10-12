@@ -1106,7 +1106,14 @@
       }
     });
 
-    /* 正文插图：压缩 → 传云端存储 → 在光标处插入 data URI */
+    /* 正文插图：压缩 → 传云端存储（留素材）→ 在光标处插入 data URI。
+       为什么插图必须内嵌 base64、不能改成存储直链（2026-10-12 实测结论，别再改回去）：
+         · cloud.storage 没有 getPublicUrl（wrapper 只暴露 from/userPath/sharedPath）
+         · 手拼 /.cloud/storage/object/public/... 匿名访问返回 401 invalid_client
+         · createSignedUrl 上限硬卡 3600 秒且需要凭据，匿名读者拿不到
+       即「公开桶 / 长效签名 URL」在当前「纯前端 + 匿名读者」架构下都不可得，
+       base64 内嵌是唯一能让未登录读者看到图的方案。代价是正文体积随图增长，
+       所以这里压缩得比封面更狠，并由 gen-static.mjs 对超大正文给出告警。 */
     Util.$('#img-btn', root).addEventListener('click', async function () {
       const file = await Util.pickFile('image/*');
       if (!file) return;
@@ -1115,11 +1122,17 @@
       btn.textContent = '上传中…';
       try {
         if (file.size > 10 * 1024 * 1024) throw new Error('图片不能超过 10MB');
-        const compressed = await Util.compressImage(file, 1400, 0.82);
-        await Api.uploadImage(ctx.session.user.id, compressed.blob);
+        /* 正文图用得比封面更省：宽 1200、质量 0.78。
+           base64 会再膨胀约 33%，一张 1400px/0.82 的图能到 300KB+ 文本，
+           而云端正文单次写入有大小上限（长文本来就要分块 append）。 */
+        const compressed = await Util.compressImage(file, 1200, 0.78);
+        const path = await Api.uploadImage(ctx.session.user.id, compressed.blob);
         const alt = (file.name || 'image').replace(/\.[a-zA-Z0-9]+$/, '');
         insertAtCursor(contentEl, '\n![' + alt + '](' + compressed.dataUrl + ')\n');
-        Util.toast('图片已插入正文', 'success');
+        const kb = Math.round(compressed.dataUrl.length / 1024);
+        Util.toast('图片已插入正文（约 ' + kb + 'KB）· 已存入素材库', 'success');
+        /* 素材库路径只作记录，正文用的是内嵌图 */
+        console.info('[炼丹房] 插图已上传素材库:', path);
       } catch (err) {
         Util.toast(err.message || '图片上传失败', 'error');
       } finally {

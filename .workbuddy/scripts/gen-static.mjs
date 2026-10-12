@@ -326,13 +326,40 @@ function write(file, content) {
   fs.writeFileSync(file, content, 'utf8');
 }
 
+/* 附属文件（sitemap / archive / feed / llms / llms-full / index.html 导航）是
+   「无条件重写」的，过去不进变更统计，于是文章数变化时可能报「无变更」而线上其实已经变了
+   （2026-10-09 真实踩坑）。这里逐项记录 md5 差异，让「是否真的需要发布」一眼可判。 */
+const auxChanges = [];
+function writeTracked(file, content, label) {
+  const abs = path.join(siteDir, file);
+  let old = null;
+  try { old = fs.readFileSync(abs, 'utf8'); } catch (e) { /* 新文件 */ }
+  const changed = old === null || md5(old) !== md5(content);
+  if (changed) auxChanges.push(label + (old === null ? '(新增)' : ''));
+  write(abs, content);
+  return changed;
+}
+
 function md5(s) {
   return crypto.createHash('md5').update(s, 'utf8').digest('hex');
 }
 
 /* 逐个生成，只统计真正发生变化的文件 */
 const changes = { added: [], updated: [], same: [] };
+const oversized = [];   /* 正文/封面过大，快照页会变得很重 */
 let bytes = 0;
+
+/* 正文里若混进了 base64 内嵌图（data:image/...），HTML 会整体膨胀几倍。
+   旧版编辑器就是这么插图，这里给出明确告警，避免「文章一多，快照页悄悄变成几 MB」。 */
+const INLINE_IMG_WARN_BYTES = 300 * 1024;   // 单篇正文告警阈值
+articles.forEach(function (a) {
+  const contentBytes = Buffer.byteLength(String(a.content || ''), 'utf8');
+  const inlineImgs = (String(a.content || '').match(/data:image\//g) || []).length;
+  if (contentBytes > INLINE_IMG_WARN_BYTES || inlineImgs > 0) {
+    oversized.push({ id: a.id, title: a.title, bytes: contentBytes, inlineImgs: inlineImgs });
+  }
+});
+
 articles.forEach(function (a) {
   const file = path.join(siteDir, 'a', String(a.id), 'index.html');
   const html = articlePage(a);
@@ -360,7 +387,7 @@ if (fs.existsSync(aRoot)) {
 
 const archiveFile = path.join(siteDir, 'archive', 'index.html');
 const archiveHtml = archivePage();
-write(archiveFile, archiveHtml);
+writeTracked(path.join('archive', 'index.html'), archiveHtml, 'archive/index.html');
 
 const urls = [{ loc: BASE + '/', lastmod: isoDate(articles[0].created_at), priority: '1.0' },
   { loc: BASE + '/archive/', lastmod: isoDate(articles[0].created_at), priority: '0.7' }].concat(
@@ -379,7 +406,7 @@ const sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://w
       '    <changefreq>weekly</changefreq>\n    <priority>' + u.priority + '</priority>\n  </url>';
   }).join('\n') +
   '\n</urlset>\n';
-write(path.join(siteDir, 'sitemap.xml'), sitemap);
+writeTracked('sitemap.xml', sitemap, 'sitemap.xml');
 
 const robots = 'User-agent: *\nAllow: /\n\n' +
   '# 面向 AI 的站点说明（llmstxt.org 约定）\n' +
@@ -387,17 +414,17 @@ const robots = 'User-agent: *\nAllow: /\n\n' +
   '# llms-full.txt: ' + BASE + '/llms-full.txt\n' +
   '# RSS 订阅: ' + BASE + '/feed.xml\n\n' +
   'Sitemap: ' + BASE + '/sitemap.xml\n';
-write(path.join(siteDir, 'robots.txt'), robots);
+writeTracked('robots.txt', robots, 'robots.txt');
 
 /* RSS 订阅源：按发布时间倒序，链接指向静态页，便于阅读器抓正文 */
 const feed = feedXml();
-write(path.join(siteDir, 'feed.xml'), feed);
+writeTracked('feed.xml', feed, 'feed.xml');
 
 /* 给 AI 读的两个文件：llms.txt 是索引，llms-full.txt 是全文 */
 const llms = llmsTxt();
 const llmsFull = llmsFullTxt();
-write(path.join(siteDir, 'llms.txt'), llms);
-write(path.join(siteDir, 'llms-full.txt'), llmsFull);
+writeTracked('llms.txt', llms, 'llms.txt');
+writeTracked('llms-full.txt', llmsFull, 'llms-full.txt');
 
 /* 首页注入静态导航：不执行 JS 的爬虫也能从这里发现全部文章 */
 function updateIndexNav() {
@@ -417,9 +444,18 @@ function updateIndexNav() {
     '<ul>\n' + list + '\n</ul>\n' +
     '<p><a href="' + BASE + '/archive/">查看完整归档</a></p>\n' +
     '</div>\n</noscript>\n<!-- SNAP:NAV:END -->';
-  fs.writeFileSync(indexPath, html.slice(0, start) + block + html.slice(end + '<!-- SNAP:NAV:END -->'.length), 'utf8');
+  const next = html.slice(0, start) + block + html.slice(end + '<!-- SNAP:NAV:END -->'.length);
+  if (next !== html) auxChanges.push('index.html(noscript 导航)');
+  fs.writeFileSync(indexPath, next, 'utf8');
   return true;
 }
+
+const navUpdated = updateIndexNav();
+
+/* 「是否有任何变更」= 文章快照变了 / 下线清理了 / 附属文件变了。
+   以前只看文章那三项，导致附属文件变了却报「无变更」（见文件头注释与 memory 记录）。 */
+const anyChange = changes.added.length > 0 || changes.updated.length > 0 ||
+  removed.length > 0 || auxChanges.length > 0;
 
 console.log('文章快照:', articles.length, '篇');
 console.log('  新增:', changes.added.length ? changes.added.join(',') : '无');
@@ -431,7 +467,17 @@ console.log('sitemap 条目:', urls.length);
 console.log('feed.xml:', articles.length + ' 条 · ' + (Buffer.byteLength(feed) / 1024).toFixed(1) + ' KB');
 console.log('llms.txt:', (Buffer.byteLength(llms) / 1024).toFixed(1) + ' KB');
 console.log('llms-full.txt:', (Buffer.byteLength(llmsFull) / 1024).toFixed(1) + ' KB');
-console.log('首页静态导航:', updateIndexNav() ? '已更新' : '未找到标记，跳过');
+console.log('首页静态导航:', navUpdated ? '已更新' : '未找到标记，跳过');
 console.log('快照总体积: ' + (bytes / 1024).toFixed(1) + ' KB');
+console.log('附属文件变更:', auxChanges.length ? auxChanges.join(', ') : '无');
+console.log('结论:', anyChange ? '★ 有变更，需要发布' : '无变更，可跳过发布');
+if (oversized.length) {
+  console.log('');
+  console.log('⚠ 以下文章正文偏大，建议改用外链图片（正文里出现 data:image 内嵌图会显著拖慢页面）：');
+  oversized.forEach(function (o) {
+    console.log('   - id ' + o.id + ' 《' + oneLine(o.title) + '》 ' +
+      (o.bytes / 1024).toFixed(1) + ' KB' + (o.inlineImgs ? ' · 内嵌图 ' + o.inlineImgs + ' 张' : ''));
+  });
+}
 console.log('输出目录:', siteDir);
 console.log('同步时间戳（请写入 site_settings.seo_synced_at）:', new Date().toISOString());

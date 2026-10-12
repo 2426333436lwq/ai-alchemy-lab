@@ -401,14 +401,27 @@ a:hover { color: var(--cinnabar-deep); }
 .card-summary {
   font-size: 14px;
   color: var(--ink-soft);
+  /* -webkit-box + line-clamp 是「限两行 + 溢出省略」的经典写法，但它对
+     display 的解析很脆：一旦同一条规则里还有 flex 参与布局，或浏览器把
+     -webkit-box 当未知值丢弃（实测 computed display 会变成 flow-root），
+     line-clamp 就静默失效，摘要会溢出并压到下面的日期 / 标签上。
+     这里用 max-height + 行高把高度钉死，再保留 line-clamp 拿省略号：
+     即使 clamp 失效，也不会再溢出串行。 */
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  max-height: calc(1.6em * 2);
   margin-bottom: 14px;
-  flex: 1;
+  /* 不要用 flex:1 撑满：卡片等高由 grid 的行来保证，
+     摘要撑开只会把 meta / tags 顶出可视区。改用 margin-top:auto 让下方内容贴底。 */
+  flex: none;
 }
 .card-meta {
+  /* 摘要不再用 flex:1 撑开，改由这里把 meta 推到卡片底部，保证等高卡片里
+     日期 / 阅读量与标签始终贴着下沿对齐 */
+  margin-top: auto;
   display: flex;
   align-items: center;
   justify-content: space-between;

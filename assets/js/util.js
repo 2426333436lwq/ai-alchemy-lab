@@ -84,44 +84,128 @@
   };
 
   /* ---------- 图片压缩：返回 { dataUrl, blob } ---------- */
+  /* 手机竖拍的照片方向存在 EXIF Orientation 里：浏览器显示 <img> 时会自动转正，
+     但 drawImage 画进 canvas 时不会——不处理的话压缩后就被「烤死」成躺倒的。
+     优先用 createImageBitmap 的 imageOrientation:'from-image'（原生按 EXIF 转正），
+     不支持时回退到老路子，并在解码前取一次 EXIF 方向手动做同样的变换。 */
   Util.compressImage = function (file, maxWidth, quality) {
     const limit = maxWidth || 1400;
     const q = quality || 0.82;
-    return new Promise(function (resolve, reject) {
-      if (!file || !/^image\//.test(file.type)) {
-        reject(new Error('请选择图片文件'));
-        return;
+
+    if (!file || !/^image\//.test(file.type)) {
+      return Promise.reject(new Error('请选择图片文件'));
+    }
+
+    function toBlob(canvas) {
+      return new Promise(function (resolve, reject) {
+        canvas.toBlob(function (blob) {
+          if (!blob) { reject(new Error('压缩图片失败')); return; }
+          resolve({ dataUrl: canvas.toDataURL('image/jpeg', q), blob: blob });
+        }, 'image/jpeg', q);
+      });
+    }
+
+    function draw(source, sw, sh, orientation) {
+      const canvas = document.createElement('canvas');
+      const rotated = orientation >= 5 && orientation <= 8; // 5~8 表示旋转了 90°
+      const dw = rotated ? sh : sw;
+      const dh = rotated ? sw : sh;
+      const scale = dw > limit ? limit / dw : 1;
+      canvas.width = Math.round(dw * scale);
+      canvas.height = Math.round(dh * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      /* 按 EXIF 方向把画布变换到「已经是正的」状态，再整幅画上去 */
+      switch (orientation) {
+        case 2: ctx.transform(-1, 0, 0, 1, canvas.width, 0); break;
+        case 3: ctx.transform(-1, 0, 0, -1, canvas.width, canvas.height); break;
+        case 4: ctx.transform(1, 0, 0, -1, 0, canvas.height); break;
+        case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
+        case 6: ctx.transform(0, 1, -1, 0, canvas.height, 0); break;
+        case 7: ctx.transform(0, -1, -1, 0, canvas.height, canvas.width); break;
+        case 8: ctx.transform(0, -1, 1, 0, 0, canvas.width); break;
+        default: break;
       }
-      const reader = new FileReader();
-      reader.onerror = function () { reject(new Error('读取图片失败')); };
-      reader.onload = function () {
-        const img = new Image();
-        img.onerror = function () { reject(new Error('解析图片失败')); };
-        img.onload = function () {
-          let w = img.naturalWidth;
-          let h = img.naturalHeight;
-          if (w > limit) {
-            h = Math.round((h * limit) / w);
-            w = limit;
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, w, h);
-          ctx.drawImage(img, 0, 0, w, h);
-          const dataUrl = canvas.toDataURL('image/jpeg', q);
-          canvas.toBlob(function (blob) {
-            if (!blob) { reject(new Error('压缩图片失败')); return; }
-            resolve({ dataUrl: dataUrl, blob: blob });
-          }, 'image/jpeg', q);
+      if (rotated) ctx.drawImage(source, 0, 0, sh, sw, 0, 0, canvas.height, canvas.width);
+      else ctx.drawImage(source, 0, 0, sw, sh, 0, 0, canvas.width, canvas.height);
+      return toBlob(canvas);
+    }
+
+    /* 路径 A：createImageBitmap 原生按 EXIF 转正，最省事也最准 */
+    if (typeof createImageBitmap === 'function') {
+      return createImageBitmap(file, { imageOrientation: 'from-image' })
+        .then(function (bmp) {
+          const out = draw(bmp, bmp.width, bmp.height, 1);
+          return out.then(function (r) { bmp.close && bmp.close(); return r; });
+        })
+        .catch(function () { return legacy(); });
+    }
+    return legacy();
+
+    /* 路径 B：老浏览器，自己读 EXIF 方向再手动画 */
+    function legacy() {
+      return new Promise(function (resolve, reject) {
+        const reader = new FileReader();
+        reader.onerror = function () { reject(new Error('读取图片失败')); };
+        reader.onload = function () {
+          const buf = reader.result;
+          const img = new Image();
+          /* object URL 用完必须释放，否则大图反复选择会一直占内存 */
+          const objUrl = URL.createObjectURL(file);
+          const cleanup = function () {
+            try { URL.revokeObjectURL(objUrl); } catch (e) { /* 忽略 */ }
+          };
+          img.onerror = function () { cleanup(); reject(new Error('解析图片失败')); };
+          img.onload = function () {
+            draw(img, img.naturalWidth, img.naturalHeight, readExifOrientation(buf))
+              .then(function (r) { cleanup(); resolve(r); },
+                    function (e) { cleanup(); reject(e); });
+          };
+          img.src = objUrl;
         };
-        img.src = String(reader.result);
-      };
-      reader.readAsDataURL(file);
-    });
+        reader.readAsArrayBuffer(file);
+      });
+    }
   };
+
+  /* 只读 JPEG 的 EXIF Orientation（1~8）；读不到就返回 1（不旋转）。
+     刻意不做完整 EXIF 解析：只需要 APP1 段里 TIFF 头之后的第一个 Orientation 标签。 */
+  function readExifOrientation(buffer) {
+    try {
+      const view = new DataView(buffer);
+      if (view.byteLength < 4 || view.getUint16(0) !== 0xFFD8) return 1; // 不是 JPEG
+      let offset = 2;
+      while (offset + 4 < view.byteLength) {
+        if (view.getUint8(offset) !== 0xFF) { offset += 1; continue; }
+        const marker = view.getUint8(offset + 1);
+        const size = view.getUint16(offset + 2);
+        /* APP1 且以 "Exif\0\0" 开头 */
+        if (marker === 0xE1 && offset + 4 + 6 <= view.byteLength) {
+          const tag = String.fromCharCode(
+            view.getUint8(offset + 4), view.getUint8(offset + 5),
+            view.getUint8(offset + 6), view.getUint8(offset + 7));
+          if (tag === 'Exif') {
+            const tiff = offset + 10;
+            const little = view.getUint16(tiff) === 0x4949;
+            const ifd0 = tiff + view.getUint32(tiff + 4, little);
+            const count = view.getUint16(ifd0, little);
+            for (let i = 0; i < count; i++) {
+              const entry = ifd0 + 2 + i * 12;
+              if (entry + 12 > view.byteLength) break;
+              if (view.getUint16(entry, little) === 0x0112) {
+                const v = view.getUint16(entry + 8, little);
+                return v >= 1 && v <= 8 ? v : 1;
+              }
+            }
+          }
+        }
+        if (marker === 0xDA) break; // 到了图像数据，后面不会再有 EXIF
+        offset += 2 + size;
+      }
+    } catch (e) { /* 解析失败按不旋转处理 */ }
+    return 1;
+  }
 
   /* ---------- 登录会话 ---------- */
   Util.getSession = function () {
