@@ -24,11 +24,11 @@
   <!-- 第三方库全部本地自托管（assets/vendor/），不依赖任何境外 CDN，国内外网络都能加载 -->
   <!-- ?v= 是缓存版本号：改了 JS/CSS 后换一个值，Service Worker 与浏览器就会立刻拉新版，
        不用等「陈旧优先 + 后台更新」慢慢生效。sw.js 里的 VERSION 也要一起 bump -->
-  <link rel="stylesheet" id="hljs-light" href="assets/vendor/hljs-github.min.css?v=20261010">
-  <link rel="stylesheet" id="hljs-dark" href="assets/vendor/hljs-github-dark.min.css?v=20261010" disabled>
-  <link rel="stylesheet" href="assets/css/style.css?v=20261010">
+  <link rel="stylesheet" id="hljs-light" href="assets/vendor/hljs-github.min.css?v=20261012">
+  <link rel="stylesheet" id="hljs-dark" href="assets/vendor/hljs-github-dark.min.css?v=20261012" disabled>
+  <link rel="stylesheet" href="assets/css/style.css?v=20261012">
   <!-- Waline 评论样式（当前 COMMENT_BACKEND='waline'，评论走后端 https://ai-alchemy-waline.vercel.app） -->
-  <link rel="stylesheet" href="assets/vendor/waline.css?v=20261010">
+  <link rel="stylesheet" href="assets/vendor/waline.css?v=20261012">
 </head>
 <body>
   <div id="read-progress" class="read-progress hidden"><i id="read-progress-bar"></i></div>
@@ -136,19 +136,23 @@
 
   <div id="toast-root" aria-live="polite"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
-  <script src="assets/vendor/marked.min.js?v=20261010"></script>
-  <script src="assets/vendor/purify.min.js?v=20261010"></script>
-  <script src="assets/vendor/highlight.min.js?v=20261010"></script>
-  <script src="assets/js/config.js?v=20261010"></script>
-  <script src="assets/js/util.js?v=20261010"></script>
-  <script src="assets/js/markdown.js?v=20261010"></script>
-  <script src="assets/js/api.js?v=20261010"></script>
-  <script src="assets/js/theme.js?v=20261010"></script>
-  <script src="assets/js/views.js?v=20261010"></script>
-  <script src="assets/js/ask-widget.js?v=20261010"></script>
-  <script src="assets/js/auth.js?v=20261010"></script>
-  <script src="assets/js/admin.js?v=20261010"></script>
-  <script src="assets/js/app.js?v=20261010"></script>
+  <!-- 云 SDK 必须自托管：本站面向国内读者，jsdelivr 的 DNS 在国内经常解析失败。
+       放在 CDN 上会连累整站——这个 script 是阻塞式加载，DNS 失败要等浏览器超时（约 7s），
+       期间后面的本地脚本虽会执行，但 boot() 跑的时候 window.cloud 还是 null，
+       页面就永远停在「炉火初燃」的 loading 上（2026-10-12 线上真实故障）。 -->
+  <script src="assets/vendor/workbuddy-cloud-sdk.js?v=20261012"></script>
+  <script src="assets/vendor/marked.min.js?v=20261012"></script>
+  <script src="assets/vendor/purify.min.js?v=20261012"></script>
+  <script src="assets/vendor/highlight.min.js?v=20261012"></script>
+  <script src="assets/js/config.js?v=20261012"></script>
+  <script src="assets/js/util.js?v=20261012"></script>
+  <script src="assets/js/markdown.js?v=20261012"></script>
+  <script src="assets/js/api.js?v=20261012"></script>
+  <script src="assets/js/theme.js?v=20261012"></script>
+  <script src="assets/js/views.js?v=20261012"></script>
+  <script src="assets/js/ask-widget.js?v=20261012"></script>
+  <script src="assets/js/auth.js?v=20261012"></script>
+  <script src="assets/js/admin.js?v=20261012"></script>
+  <script src="assets/js/app.js?v=20261012"></script>
 </body>
 </html>
