@@ -82,13 +82,21 @@ if ($html -match 'assets/vendor/workbuddy-cloud-sdk\.js') {
 # ---------- 4. 数据库文案里的敏感串 ----------
 Head "敏感信息"
 $tracked = & git -c core.quotepath=false ls-files
+# 检测模式用字符串拼接构造，避免这个脚本「自己命中自己」产生假阳性
+$patCloudflare = 'cf' + 'k_[A-Za-z0-9]{20,}'
+$patPostgres   = 'postgres(ql)?://[^:\s]+:[^@\s]+@'
+$patOpenAI     = 'sk-' + '[A-Za-z0-9]{20,}'
+$patAssignKey  = '(API_KEY|SECRET|TOKEN)\s*=\s*["'']\S{12,}'
+$self = 'verify.ps1'
 $hits = @()
 foreach ($f in $tracked) {
   if ($f -match '\.(png|jpg|jpeg|gif|webp|ico|woff2?)$') { continue }
+  if ($f -like "*$self") { continue }   # 跳过本脚本自身的模式串
   $p = Join-Path $root $f
   if (-not (Test-Path -LiteralPath $p)) { continue }
   $txt = Get-Content -LiteralPath $p -Raw -ErrorAction SilentlyContinue
-  if ($txt -match 'cfk_[A-Za-z0-9]|ZHIPU_API_KEY\s*=\s*["'']\S|postgres://\S+:\S+@') { $hits += $f }
+  if ($txt -match $patCloudflare -or $txt -match $patPostgres -or
+      $txt -match $patOpenAI -or $txt -match $patAssignKey) { $hits += $f }
 }
 if ($hits.Count) { Bad "疑似密钥出现在跟踪文件里：$($hits -join ', ')" } else { Ok "跟踪文件中未发现明文密钥" }
 
