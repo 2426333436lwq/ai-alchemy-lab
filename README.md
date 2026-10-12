@@ -74,18 +74,15 @@ manifest.webmanifest  sw.js  icons/   PWA
 改完代码后的标准动作：
 
 ```bash
-# 1. 校验 JS 语法
-for f in assets/js/*.js; do node --check "$f"; done
+# 一条命令跑完所有校验（语法 / 版本号一致性 / SDK 自托管 / 敏感串 / 快照幂等）
+# 想连无头浏览器回归一起跑：先起本地服务，再加 -Cdp
+.\.workbuddy\scripts\verify.ps1 -Cdp
 
-# 2. 如果改了文章内容，重新生成 SEO 静态快照
-#    输出末尾会给出「★ 有变更，需要发布」或「无变更，可跳过发布」的明确结论
-node .workbuddy/scripts/gen-static.mjs .workbuddy/data/articles.json "."
-
-# 3. 改了 JS/CSS 必须同时做两件事（少一件用户就会看到旧版）：
-#    index.html 里全部资源的 ?v= 换新值 + sw.js 的 VERSION bump 一位
-
-# 4. 提交
-git add -A && git commit -m "说明改了什么" && git push
+# 手工等价步骤（verify 内部就是这几件事）：
+for f in assets/js/*.js; do node --check "$f"; done          # 1. 语法
+node .workbuddy/scripts/gen-static.mjs .workbuddy/data/articles.json "."  # 2. 快照（会给出「有变更/无变更」结论）
+# 3. 改了 JS/CSS 必须同时 bump：index.html 全部资源的 ?v= + sw.js 的 VERSION
+git add -A && git commit -m "说明改了什么" && git push        # 4. 提交
 ```
 
 ## 部署：必须从 dist/ 发布，不要直接发布项目目录
