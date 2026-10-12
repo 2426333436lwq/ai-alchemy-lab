@@ -10,10 +10,51 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
 
-/* marked 装在受管 Node 工作区，脚本在仓库里，用绝对路径 require */
-const require = createRequire('C:/Users/刘玮琦/.workbuddy/binaries/node/workspace/');
-const { marked } = require('marked');
+/* marked 的解析：这个脚本不引入 package.json，marked 可能装在几个地方。
+   原来只写死了本机受管 Node 工作区的绝对路径，换机器直接起不来
+   （README 的「自包含」承诺就断在这一行）。现在按优先级逐个尝试。 */
+const here = path.dirname(fileURLToPath(import.meta.url));
+const candidates = [
+  process.env.MARKED_PATH,                                        // 显式指定优先
+  path.join(here, '..', '..', 'node_modules', 'marked', 'package.json'),  // 项目内（有的话）
+  path.join(here, '..', '..', '..', 'node_modules', 'marked', 'package.json'),
+];
+/* 受管 Node 工作区：按「当前用户的 home」推导，而不是写死某个用户名 */
+if (process.env.USERPROFILE || process.env.HOME) {
+  const home = process.env.USERPROFILE || process.env.HOME;
+  candidates.push(path.join(home, '.workbuddy', 'binaries', 'node', 'workspace', 'node_modules', 'marked', 'package.json'));
+}
+
+function loadMarked() {
+  for (const c of candidates) {
+    if (!c) continue;
+    try {
+      if (!fs.existsSync(c)) continue;
+      const req = createRequire(c);
+      const m = req('marked');
+      if (m && m.marked) return m.marked;
+    } catch (e) { /* 换下一个候选 */ }
+  }
+  /* 最后再试一次「直接 require」，在某些安装布局下能命中 */
+  try {
+    const m = createRequire(import.meta.url)('marked');
+    if (m && m.marked) return m.marked;
+  } catch (e) { /* 落到下面的报错 */ }
+  return null;
+}
+
+const marked = loadMarked();
+if (!marked) {
+  console.error('找不到 marked。请任选一种方式：');
+  console.error('  1) 在项目里装：npm i -D marked');
+  console.error('  2) 指定路径：  set MARKED_PATH=<含 node_modules/marked/package.json 的目录>');
+  console.error('     例如：set MARKED_PATH=C:/Users/you/.workbuddy/binaries/node/workspace/node_modules/marked/package.json');
+  console.error('已尝试的路径：');
+  candidates.filter(Boolean).forEach(function (c) { console.error('  - ' + c); });
+  process.exit(1);
+}
 
 const dumpPath = process.argv[2];
 const siteDir = process.argv[3] || path.resolve(process.cwd());

@@ -54,12 +54,18 @@ manifest.webmanifest  sw.js  icons/   PWA
    然后打开 `http://127.0.0.1:8080/`（**必须走 http，直接双击 index.html 不行**，
    SPA 与云服务 SDK 都需要正确 origin；登录功能只在已发布域名上可用）。
 
-运行时依赖只有两处是外部的，都不影响页面本身：
+> 注：`gen-static.mjs` 需要 `marked`。它会依次在项目内 `node_modules/`、
+> 受管 Node 工作区（按当前用户 home 推导）里找；都没有就用 `MARKED_PATH`
+> 指定，或直接在项目里 `npm i -D marked`。找不到时会打印已尝试的路径。
 
-- 云数据库 / 存储 / 认证：WorkBuddy 云服务（配置在 `assets/js/config.js`）。**评论也用它**，
-  读写站点自己的 `comments` 表，国内可达、零额外托管成本。
-- 备用评论后端：`deploy/waline/` 部署在 Vercel，地址写在 `assets/js/views.js` 的 `WALINE_SERVER`。
-  把 `COMMENT_BACKEND` 从 `'builtin'` 改成 `'waline'` 即可整体切过去（境外后端，大陆网络可能访问不到）。
+运行时依赖只有一处是外部的：
+
+- 云数据库 / 存储 / 认证：WorkBuddy 云服务（配置在 `assets/js/config.js`）。
+  评论、问答、主题同步都走它，国内可达、零额外托管成本。
+- 备用评论后端（**当前未启用**）：`deploy/waline/` 部署在 Vercel，地址在
+  `assets/js/views.js` 的 `WALINE_SERVER`。注意该文件顶部 `COMMENT_BACKEND`
+  **现在生效的值是 `'waline'`**，想切回站内自建评论（云端 `comments` 表）才改成
+  `'builtin'`。境外后端大陆网络访问不到，所以国内访客看到的是降级提示，不是故障。
 
 ## 给 AI 协作的说明
 
@@ -72,18 +78,25 @@ manifest.webmanifest  sw.js  icons/   PWA
 for f in assets/js/*.js; do node --check "$f"; done
 
 # 2. 如果改了文章内容，重新生成 SEO 静态快照
+#    输出末尾会给出「★ 有变更，需要发布」或「无变更，可跳过发布」的明确结论
 node .workbuddy/scripts/gen-static.mjs .workbuddy/data/articles.json "."
 
-# 3. 提交
+# 3. 改了 JS/CSS 必须同时做两件事（少一件用户就会看到旧版）：
+#    index.html 里全部资源的 ?v= 换新值 + sw.js 的 VERSION bump 一位
+
+# 4. 提交
 git add -A && git commit -m "说明改了什么" && git push
 ```
 
-**四条硬约定**，违反会让站点出问题：
+**五条硬约定**，违反会让站点出问题：
 
 1. 新增样式**只能用 CSS 变量**，硬编码颜色会让其他主题破皮。
 2. 目录跳转**只能用 button + `scrollTo`**，用 `#锚点` 链接会劫持 SPA 路由。
 3. `a/` 目录是生成产物，改文章请走后台或数据库，然后重跑快照脚本。
 4. 数据库建表要**先 GRANT 再建策略**；改策略要先 `DROP POLICY IF EXISTS`。
+5. **云 SDK 必须自托管**（`assets/vendor/workbuddy-cloud-sdk.js`），绝不能改回 CDN——
+   jsdelivr 在国内 DNS 经常解析失败，会让整站卡在「炉火初燃」的 loading 上。
+   同理第三方库一律放 `assets/vendor/`，不引任何境外 CDN。
 
 ## 隐私说明
 

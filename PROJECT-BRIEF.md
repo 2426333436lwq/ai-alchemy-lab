@@ -32,32 +32,49 @@
 AI Training Lab/
 ├── index.html                 唯一入口页（SPA 外壳 + 主题防闪烁脚本）
 ├── assets/
-│   ├── css/style.css          全部样式；:root 定义变量，4 个主题覆盖块
+│   ├── css/style.css          全部样式；:root 定义变量，5 个主题覆盖块
+│   ├── vendor/                第三方库本地副本（不依赖任何 CDN，见下方「网络约束」）
 │   └── js/
 │       ├── config.js          云服务 endpoint / publishableKey / 站点域名
-│       ├── util.js            DOM 助手、转义、剪贴板、分享卡片绘制、页面 meta 注入
-│       ├── markdown.js        Markdown → HTML（含标题锚点、代码块复制按钮）
+│       ├── util.js            DOM 助手、转义、剪贴板、图片压缩（含 EXIF 方向）、分享卡片、页面 meta
+│       ├── markdown.js        Markdown → HTML（含标题锚点、代码块复制按钮、图片灯箱）
 │       ├── api.js             全部数据访问，唯一与云端打交道的文件
-│       ├── theme.js           5 套主题切换 + 登录用户云端同步
-│       ├── views.js           前台页面：首页 / 文章 / 标签 / 系列 / 关于
+│       ├── theme.js           主题切换（含跟随系统）+ 登录用户云端同步
+│       ├── views.js           前台页面：首页 / 文章 / 标签 / 系列 / 关于 / 收藏
+│       ├── ask-widget.js      右下角可拖拽 AI 问答浮窗（多模型轮询 + 失败重试 + 客户端节流）
 │       ├── auth.js            邮箱登录、注册、验证码、找回密码
 │       ├── admin.js           后台：仪表盘 / 文章 / 系列 / 评论 / 标签 / 管理员 / 设置 / 编辑器
 │       └── app.js             路由分发、页头渲染、PWA 注册
 ├── a/<id>/index.html          预渲染的文章静态页（SEO 用，由脚本生成，勿手改）
 ├── archive/index.html         归档枢纽页（脚本生成）
 ├── sitemap.xml / robots.txt   （脚本生成）
+├── feed.xml                   RSS 订阅源（脚本生成）
 ├── llms.txt / llms-full.txt   给 AI 读的站点索引与全文（脚本生成）
 ├── manifest.webmanifest / sw.js / icons/   PWA
 ├── articles/                  文章 Markdown 源文件（本地存档，不参与运行）
+├── deploy/waline/             备用评论后端源码（部署在 Vercel，当前未启用）
 └── .workbuddy/
     ├── scripts/gen-static.mjs 预渲染脚本（唯一「构建」步骤）
+    ├── scripts/cdp/           无头 Edge 验证脚本（不装依赖）
     ├── data/articles.json     云端文章导出，脚本的输入
     └── memory/                项目工作日志与长期笔记
+
+### 三条容易踩的网络约束（2026-10-12 实测）
+
+1. **云 SDK 必须自托管**，不能用 jsdelivr CDN。它在 `index.html` 里是阻塞式 `<script>`，
+   国内 DNS 解析失败时要等浏览器超时（约 7s），期间本地脚本虽会执行，但 `boot()` 跑的时候
+   `window.cloud` 还是 `null`，页面会永远停在「炉火初燃」的 loading 上。
+   这条曾经真实导致过线上全站白屏，改回去务必三思。
+2. **`*.vercel.app` 在中国大陆访问不到**，所以 Waline 评论后端与 `/api/ask` 对国内用户不可用。
+3. **本机（开发沙箱）连不上 `cdn.jsdelivr.net`**（DNS 解析失败）也不通
+   `ssh.github.com:443`（SSH 握手被 reset）——前者正好是验证第 1 条的天然环境，
+   后者意味着**提交只能在本地做，push 需要你在自己机器上执行**。
 ```
 
 ## 4. 数据模型
 
 7 张表，全部启用 RLS（Row Level Security）。权限规则写在数据库策略里，不是 JS 里。
+（表名由 `assets/js/api.js` 里的 `.from('…')` 调用反查得到，改表请同步更新此表。）
 
 | 表 | 用途 | 关键策略 |
 |---|---|---|
@@ -69,10 +86,23 @@ AI Training Lab/
 | `site_settings` | 站点设置的 key/value | 公开读；写走 `update_site_setting` RPC |
 | `user_preferences` | 用户偏好（目前存主题） | 仅本人读写 |
 
-**改这类代码时最容易踩的两个坑：**
+数据库 RPC（全部经 `cloud.database.rpc()` 调用）：
+`is_admin` / `is_owner` / `claim_admin` / `admins_count` / `add_admin` / `remove_admin` /
+`rename_tag` / `delete_tag` / `increment_views` / `series_with_counts` / `update_site_setting`
+
+对象存储路径约定（`cloud.storage`）：
+`shared/<uid>/blog/images/<uuid>.jpg`（正文配图与封面）与
+`shared/<uid>/blog/files/<uuid>-<name>`（附件）。
+
+**改这类代码时最容易踩的三个坑：**
 
 - 建表后必须 **先 GRANT 再建策略**，只建策略会得到 `42501`，看起来像策略写错，其实是缺 grant。
 - PostgreSQL 没有 `CREATE POLICY IF NOT EXISTS`，要幂等就必须先 `DROP POLICY IF EXISTS`。
+- **对象存储不是公开桶**（2026-10-12 实测）：wrapper 只暴露 `from/userPath/sharedPath`，
+  没有 `getPublicUrl`；手拼 `/.cloud/storage/object/public/...` 匿名访问返回
+  `401 invalid_client`；`createSignedUrl` 上限硬卡 3600 秒且需要凭据。
+  所以**文章配图只能以 base64 内嵌正文**，未登录读者才看得到图——
+  想改成外链必须先有「公开读桶」或「服务端代理」。
 
 ## 5. 几个关键机制
 
@@ -104,5 +134,7 @@ node .workbuddy/scripts/gen-static.mjs .workbuddy/data/articles.json "E:/student
 ## 7. 已知限制
 
 - 静态托管无服务端，文章发布后静态快照最快要等一个定时周期才更新，做不到即时。
-- 本目录所在的 git 仓库实际是父目录 `E:/student/project`（另一个项目），炼丹房自身未被该仓库跟踪，也没有独立远端。
+- **本目录是独立的 git 仓库**，远端 `git@github.com:2426333436lwq/ai-alchemy-lab.git`（分支 `main`）。
+  注意：它父目录 `E:/student/project` 是**另一个**项目，两者互不跟踪，别提交错仓库。
 - 云数据库的文章正文单次写入有大小上限，长文必须分块 append。
+- 文章配图以 base64 内嵌正文，正文体积随图片线性增长（见第 4 节「对象存储不是公开桶」）。
