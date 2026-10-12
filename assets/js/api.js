@@ -15,13 +15,79 @@
     if (!window.cloud) throw new Error('云服务组件未能加载，请检查网络后刷新');
   }
 
+  /* 转义 LIKE 的特殊字符：\ % _ */
   function escapeLike(str) {
     return String(str).replace(/[\\%_]/g, function (ch) { return '\\' + ch; });
+  }
+
+  /* 把用户输入安全地放进 PostgREST 的 or() 表达式里。
+     实测踩过的两个坑（2026-10-12）：
+       ① 用户输入里的 `,` 会破坏 or() 的语法，直接报
+          "failed to parse logic tree"，搜索整个崩掉 —— 必须去掉分隔符。
+       ② `(` `)` 会改变分组语义，`"` 会破坏引号配对，一并清理。
+     这里只保留「可搜索的字符」，其余替换成空格。 */
+  function sanitizeSearch(str) {
+    return String(str == null ? '' : str)
+      .replace(/[,()"'\\%_*]/g, ' ')   // 分隔符与 LIKE/分组元字符
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /* 由用户输入构造 or() 表达式。
+     按空格切成多个词，每个词都在「标题 / 摘要 / 正文」三个字段里找，词之间取并集。
+
+     为什么是并集而不是整串匹配（实测）：整串匹配时，用户搜「上下文 工程」或
+     「微调 LoRA」会得到 0 条 —— 因为正文里没有把那两个词连在一起的写法，
+     而这两个词其实全站到处都是。用并集后同样的查询能命中，明显更符合直觉。
+     代价是词多了会放宽召回（搜「RAG Agent」会返回只含 RAG 的文章），
+     所以按命中顺序由数据库的相关性排序即可，不做额外的精确度处理。 */
+  function buildOrFilter(cleaned) {
+    const words = cleaned.split(' ').filter(Boolean).slice(0, 6); // 限制词数，别让表达式过长
+    const fields = ['title', 'summary', 'content'];
+    const parts = [];
+    words.forEach(function (w) {
+      const s = escapeLike(w);
+      fields.forEach(function (f) { parts.push(f + '.ilike.%' + s + '%'); });
+    });
+    return parts.join(',');
   }
 
   const Api = {};
 
   /* ---------------- 文章（公开读） ---------------- */
+
+  /* 构造「已发布」文章的基础查询，tag / search 条件按需叠加。
+     抽出来是为了让列表查询和计数查询共用同一套筛选逻辑——
+     两处各写一遍迟早会不一致（那正是分页数对不上的经典成因）。 */
+  function buildArticleQuery(opts) {
+    const tag = opts && opts.tag;
+    const search = opts && opts.search;
+    let query = cloud.database
+      .from('articles')
+      .select('id', { count: 'exact' })
+      .eq('status', 'published');
+
+    if (tag) query = query.contains('tags', [tag]);
+    if (search) {
+      /* 先清洗再构造：清洗掉会破坏 or() 语法的字符（逗号等），再按词展开成并集 */
+      const cleaned = sanitizeSearch(search);
+      const filter = cleaned ? buildOrFilter(cleaned) : '';
+      if (filter) query = query.or(filter);
+    }
+    return query;
+  }
+
+  /* 统计命中篇数。
+     ⚠️ 实测（2026-10-12）：只要用了 .or()，云库返回的 count 恒为 null。
+     于是列表接口的 total 会退化成 0 —— 分页器据此算不出总页数而整个消失，
+     结果超过一页时用户永远翻不到后面的内容（搜索场景实测踩到）。
+     计数查询只 select('id')，不拉正文，代价可控。 */
+  async function countArticles(opts) {
+    const res = await buildArticleQuery(opts).limit(5000);
+    if (res && res.error) return 0;
+    if (res && typeof res.count === 'number') return res.count;
+    return (res && res.data ? res.data.length : 0);
+  }
 
   Api.listArticles = async function (opts) {
     requireCloud();
@@ -38,15 +104,18 @@
 
     if (tag) query = query.contains('tags', [tag]);
     if (search) {
-      const s = escapeLike(search.trim());
-      /* 全文检索范围：标题 + 摘要 + 正文 */
-      if (s) query = query.or('title.ilike.%' + s + '%,summary.ilike.%' + s + '%,content.ilike.%' + s + '%');
+      const cleaned = sanitizeSearch(search);
+      const filter = cleaned ? buildOrFilter(cleaned) : '';
+      if (filter) query = query.or(filter);
     }
 
     const from = (page - 1) * pageSize;
     const res = await query.range(from, from + pageSize - 1);
     const data = unwrap(res, '加载文章列表失败');
-    return { list: data || [], total: res.count || 0 };
+
+    let total = res.count;
+    if (total == null) total = await countArticles({ tag: tag, search: search });
+    return { list: data || [], total: total };
   };
 
   Api.getArticle = async function (id) {
