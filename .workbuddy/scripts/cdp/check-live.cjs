@@ -1,4 +1,7 @@
-﻿const EDGE='C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'; const PORT=9431;
+/* 生产环境冒烟测试：直接跑线上域名，验证部署是否真的生效。
+   与 check-regression.cjs 的区别：那个打 localhost（验代码），这个打生产（验部署）。
+   用法：node .workbuddy/scripts/cdp/check-live.cjs  */
+const EDGE='C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'; const PORT=9431;
 const BASE='https://ai-alchemy-lab.app.workbuddy.host/';
 const {spawn}=require('child_process'); const fs=require('fs'),os=require('os'),path=require('path');
 const udd=fs.mkdtempSync(path.join(os.tmpdir(),'wbcdp-'));
